@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-triage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-triage}
+      POSTGRES_DB: ${POSTGRES_DB:-triage}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U triage -d triage"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # ports:
+    #   - "${PORT:-4000}:4000"
+    expose:
+      - "4000"
+    environment:
+      # Phoenix configuration
+      PHX_SERVER: "true"
+      PHX_HOST: ${PHX_HOST:-localhost}
+      PORT: "4000"
+
+      # Database configuration
+      DATABASE_URL: postgresql://${POSTGRES_USER:-triage}:${POSTGRES_PASSWORD:-triage}@db:5432/${POSTGRES_DB:-triage}
+      POOL_SIZE: ${POOL_SIZE:-10}
+
+      # Secret configuration - CHANGE THESE IN PRODUCTION!
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+
+      # Optional configurations
+      DNS_CLUSTER_QUERY: ${DNS_CLUSTER_QUERY:-}
+      ECTO_IPV6: ${ECTO_IPV6:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "/app/bin/triage eval 'Triage.Release.migrate' && /app/bin/server"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4000/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:

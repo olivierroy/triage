@@ -15,6 +15,12 @@ defmodule TriageWeb.Router do
   end
 
   scope "/", TriageWeb do
+    pipe_through :api
+
+    get "/healthz", HealthController, :index
+  end
+
+  scope "/", TriageWeb do
     pipe_through :browser
 
     get "/", PageController, :home
