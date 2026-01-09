@@ -1,0 +1,19 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <div class="space-y-6 text-slate-900">
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-[0.3em] text-sky-500">Edit rule</p>
+      <h1 class="text-3xl font-semibold tracking-tight">Adjust how emails are filtered</h1>
+      <p class="text-slate-600">
+        Update senders, keywords, or actions to fine-tune what Triage processes or archives.
+      </p>
+    </div>
+
+    <.email_rule_form
+      form={@form}
+      id="email-rule-form"
+      action={~p"/email_rules/#{@email_rule}"}
+      method="patch"
+      submit_label="Update rule"
+    />
+  </div>
+</Layouts.app>

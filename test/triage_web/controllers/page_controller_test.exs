@@ -19,7 +19,7 @@ defmodule TriageWeb.PageControllerTest do
 
     response = html_response(conn, 200)
     assert response =~ "Connect other Gmail accounts"
-    assert response =~ "Your custom categories"
+    assert response =~ "Your categories"
     assert response =~ "Add new category"
     assert response =~ "Investor"
   end

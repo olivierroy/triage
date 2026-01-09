@@ -1,0 +1,85 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <div class="space-y-8 text-slate-900">
+    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <p class="text-sm font-semibold uppercase tracking-[0.3em] text-sky-500">Email rules</p>
+        <h1 class="text-3xl font-semibold tracking-tight">
+          Control which emails Triage processes
+        </h1>
+        <p class="text-slate-600">
+          Rules help you skip unwanted messages or keep certain conversations from being archived automatically.
+        </p>
+      </div>
+      <.link
+        href={~p"/email_rules/new"}
+        class="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/40 transition hover:-translate-y-0.5"
+      >
+        <.icon name="hero-plus" class="h-4 w-4" /> New rule
+      </.link>
+    </div>
+
+    <div class="rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/70">
+      <%= if Enum.empty?(@rules) do %>
+        <div class="p-8 text-center text-sm text-slate-600">
+          No rules yet. Click "New rule" to define how Triage should handle specific senders or keywords.
+        </div>
+      <% else %>
+        <div class="divide-y divide-slate-100">
+          <%= for rule <- @rules do %>
+            <article class="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
+              <div class="space-y-2">
+                <div class="flex items-center gap-3">
+                  <p class="text-lg font-semibold text-slate-900">{rule.name}</p>
+                  <span class={[
+                    "rounded-full px-3 py-0.5 text-xs font-semibold",
+                    (rule.action == "skip" && "bg-rose-100 text-rose-700") ||
+                      "bg-emerald-100 text-emerald-700"
+                  ]}>
+                    {if rule.action == "skip", do: "Skips", else: "Processes"}
+                  </span>
+                  <span class={[
+                    "rounded-full px-3 py-0.5 text-xs font-semibold",
+                    (rule.archive && "bg-slate-100 text-slate-700") ||
+                      "bg-amber-100 text-amber-700"
+                  ]}>
+                    {if rule.archive, do: "Archives", else: "Leaves in inbox"}
+                  </span>
+                </div>
+                <dl class="text-sm text-slate-500">
+                  <div class="flex flex-wrap gap-2">
+                    <dt class="font-semibold text-slate-600">Senders:</dt>
+                    <dd>{rule.match_senders |> display_list()}</dd>
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <dt class="font-semibold text-slate-600">Subject keywords:</dt>
+                    <dd>{rule.match_subject_keywords |> display_list()}</dd>
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <dt class="font-semibold text-slate-600">Body keywords:</dt>
+                    <dd>{rule.match_body_keywords |> display_list()}</dd>
+                  </div>
+                </dl>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <.link
+                  href={~p"/email_rules/#{rule}/edit"}
+                  class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:border-slate-400"
+                >
+                  <.icon name="hero-pencil-square" class="h-4 w-4" /> Edit
+                </.link>
+                <.link
+                  href={~p"/email_rules/#{rule}"}
+                  method="delete"
+                  data-confirm="Delete this rule?"
+                  class="inline-flex items-center gap-2 rounded-2xl border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:border-rose-300"
+                >
+                  <.icon name="hero-trash" class="h-4 w-4" /> Delete
+                </.link>
+              </div>
+            </article>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</Layouts.app>

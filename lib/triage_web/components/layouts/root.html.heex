@@ -26,19 +26,32 @@
           </div>
         </.link>
 
-        <%= if !@current_scope do %>
-          <div class="hidden items-center gap-6 text-sm font-medium text-slate-500 md:flex">
+        <div class="hidden items-center gap-6 text-sm font-medium text-slate-500 md:flex">
+          <%= if @current_scope do %>
+            <.link
+              href={~p"/"}
+              class="transition hover:text-slate-900"
+            >
+              Home
+            </.link>
+            <.link
+              href={~p"/email_rules"}
+              class="transition hover:text-slate-900"
+            >
+              Rules
+            </.link>
+          <% else %>
             <a href="/#hero" class="transition hover:text-slate-900">Product</a>
             <a href="/#features" class="transition hover:text-slate-900">Features</a>
             <a href="/#workflow" class="transition hover:text-slate-900">Workflow</a>
-          </div>
-        <% end %>
+          <% end %>
+        </div>
+
 
         <div class="flex items-center gap-3">
           <%= if @current_scope do %>
             <div class="hidden flex-col text-right text-xs text-slate-500 sm:flex">
               <span class="font-semibold text-slate-900">{@current_scope.user.email}</span>
-              <span>Pro workspace</span>
             </div>
             <.link
               href={~p"/users/settings"}

@@ -9,7 +9,7 @@ defmodule Triage.Accounts.UserNotifier do
     email =
       new()
       |> to(recipient)
-      |> from({"Triage", "contact@example.com"})
+      |> from({"Triage", "contact@olivierroy.dev"})
       |> subject(subject)
       |> text_body(body)
 
