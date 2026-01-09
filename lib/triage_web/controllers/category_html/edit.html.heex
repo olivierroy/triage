@@ -1,0 +1,45 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <div class="space-y-8 text-slate-900">
+    <div class="space-y-2">
+      <p class="text-sm font-semibold uppercase tracking-[0.3em] text-sky-500">Edit category</p>
+      <h1 class="text-3xl font-semibold tracking-tight">
+        Update how Triage sorts this inbox shelf
+      </h1>
+      <p class="text-slate-600">
+        Rename the category or fine-tune its description so AI sorting stays accurate.
+      </p>
+    </div>
+
+    <.form
+      for={@form}
+      id="category-form"
+      action={~p"/categories/#{@category}"}
+      method="post"
+      class="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/70"
+    >
+      <input type="hidden" name="_method" value="patch" />
+      <.input
+        field={@form[:name]}
+        type="text"
+        label="Category name"
+        placeholder="Investor Updates"
+      />
+      <.input
+        field={@form[:description]}
+        type="textarea"
+        label="Description"
+        placeholder="LP summaries, data room reminders, and anything related to capital raises."
+        rows="5"
+      />
+
+      <div class="flex flex-wrap items-center gap-3">
+        <.button phx-disable-with="Saving..." class="bg-sky-600 hover:bg-sky-500">
+          Update category
+        </.button>
+        <.link href={~p"/"} class="text-sm font-semibold text-slate-500 hover:text-slate-900">
+          Cancel
+        </.link>
+      </div>
+    </.form>
+  </div>
+</Layouts.app>

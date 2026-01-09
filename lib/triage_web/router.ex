@@ -66,6 +66,7 @@ defmodule TriageWeb.Router do
     get "/users/settings", UserSettingsController, :edit
     put "/users/settings", UserSettingsController, :update
     get "/users/settings/confirm-email/:token", UserSettingsController, :confirm_email
+    resources "/categories", CategoryController, only: [:new, :create, :edit, :update]
   end
 
   scope "/", TriageWeb do
