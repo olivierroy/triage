@@ -1,0 +1,87 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <div class="mx-auto max-w-sm space-y-4">
+    <div class="text-center">
+      <.header>
+        <p>Log in</p>
+        <:subtitle>
+          <%= if @current_scope do %>
+            You need to reauthenticate to perform sensitive actions on your account.
+          <% else %>
+            Don't have an account? <.link
+              navigate={~p"/users/register"}
+              class="font-semibold text-brand hover:underline"
+              phx-no-format
+            >Sign up</.link> for an account now.
+          <% end %>
+        </:subtitle>
+      </.header>
+    </div>
+
+    <div
+      :if={local_mail_adapter?()}
+      class="flex items-start gap-3 rounded-3xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-slate-600 shadow-inner"
+    >
+      <.icon name="hero-information-circle" class="size-6 shrink-0 text-sky-500" />
+      <div>
+        <p class="font-semibold text-slate-800">You are running the local mail adapter.</p>
+        <p>
+          To see sent emails, visit <.link
+            href="/dev/mailbox"
+            class="font-semibold text-brand hover:underline"
+          >
+            the mailbox page
+          </.link>.
+        </p>
+      </div>
+    </div>
+
+    <.form :let={f} for={@form} as={:user} id="login_form_magic" action={~p"/users/log-in"}>
+      <.input
+        readonly={!!@current_scope}
+        field={f[:email]}
+        type="email"
+        label="Email"
+        autocomplete="email"
+        required
+        phx-mounted={JS.focus()}
+      />
+      <.button class="w-full">
+        Log in with email <span aria-hidden="true">→</span>
+      </.button>
+    </.form>
+
+    <.divider>or</.divider>
+
+    <a
+      href={~p"/users/oauth/google/request"}
+      class="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/90 px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white"
+    >
+      <.icon name="hero-globe-alt" class="size-5" /> Log in with Google
+    </a>
+
+    <.divider>or</.divider>
+
+    <.form :let={f} for={@form} as={:user} id="login_form_password" action={~p"/users/log-in"}>
+      <.input
+        readonly={!!@current_scope}
+        field={f[:email]}
+        type="email"
+        label="Email"
+        autocomplete="email"
+        required
+      />
+      <.input
+        field={f[:password]}
+        type="password"
+        label="Password"
+        autocomplete="current-password"
+      />
+      <.button class="w-full" name={@form[:remember_me].name} value="true">
+        Log in and stay logged in <span aria-hidden="true">→</span>
+      </.button>
+      <.button class="mt-2 w-full">
+        Log in only this time
+      </.button>
+    </.form>
+  </div>
+</Layouts.app>

@@ -7,6 +7,19 @@
 # General application configuration
 import Config
 
+config :triage, :scopes,
+  user: [
+    default: true,
+    module: Triage.Accounts.Scope,
+    assign_key: :current_scope,
+    access_path: [:user, :id],
+    schema_key: :user_id,
+    schema_type: :id,
+    schema_table: :users,
+    test_data_fixture: Triage.AccountsFixtures,
+    test_setup_helper: :register_and_log_in_user
+  ]
+
 config :triage,
   ecto_repos: [Triage.Repo],
   generators: [timestamp_type: :utc_datetime]
@@ -65,6 +78,11 @@ config :new_relic_agent,
   app_name: System.get_env("NEW_RELIC_APP_NAME", "Triage"),
   license_key: System.get_env("NEW_RELIC_LICENSE_KEY"),
   log_level: :error
+
+# Google OAuth configuration
+config :triage, :google,
+  client_id: System.get_env("GOOGLE_CLIENT_ID", ""),
+  client_secret: System.get_env("GOOGLE_CLIENT_SECRET", "")
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

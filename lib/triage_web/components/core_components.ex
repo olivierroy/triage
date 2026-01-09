@@ -8,12 +8,10 @@ defmodule TriageWeb.CoreComponents do
   with doc strings and declarative assigns. You may customize and style
   them in any way you want, based on your application growth and needs.
 
-  The foundation for styling is Tailwind CSS, a utility-first CSS framework,
-  augmented with daisyUI, a Tailwind CSS plugin that provides UI components
-  and themes. Here are useful references:
-
-    * [daisyUI](https://daisyui.com/docs/intro/) - a good place to get
-      started and see the available components.
+  The foundation for styling is Tailwind CSS plus a light layer of bespoke
+  components defined here. Treat this module as your design system – reuse
+  these building blocks and Tailwind utilities for layout, spacing, flexbox,
+  grid, and interactions. Useful references:
 
     * [Tailwind CSS](https://tailwindcss.com) - the foundational framework
       we build on. You will use it for layout, sizing, flexbox, grid, and
@@ -56,13 +54,13 @@ defmodule TriageWeb.CoreComponents do
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
       role="alert"
-      class="toast toast-top toast-end z-50"
+      class="fixed right-5 top-5 z-50 w-full max-w-sm"
       {@rest}
     >
       <div class={[
-        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap",
-        @kind == :info && "alert-info",
-        @kind == :error && "alert-error"
+        "flex items-start gap-3 rounded-3xl border px-4 py-3 text-sm shadow-2xl shadow-slate-300/60 transition",
+        @kind == :info && "border-sky-100 bg-white text-slate-900",
+        @kind == :error && "border-rose-200 bg-rose-50 text-rose-900"
       ]}>
         <.icon :if={@kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
         <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-5 shrink-0" />
@@ -71,8 +69,12 @@ defmodule TriageWeb.CoreComponents do
           <p>{msg}</p>
         </div>
         <div class="flex-1" />
-        <button type="button" class="group self-start cursor-pointer" aria-label={gettext("close")}>
-          <.icon name="hero-x-mark" class="size-5 opacity-40 group-hover:opacity-70" />
+        <button
+          type="button"
+          class="group -mr-1 rounded-full p-1 text-slate-400 transition hover:text-slate-600"
+          aria-label={gettext("close")}
+        >
+          <.icon name="hero-x-mark" class="size-5" />
         </button>
       </div>
     </div>
@@ -94,22 +96,30 @@ defmodule TriageWeb.CoreComponents do
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
-    variants = %{"primary" => "btn-primary", nil => "btn-primary btn-soft"}
+    variants = %{
+      "primary" =>
+        "bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-lg shadow-sky-500/30 hover:-translate-y-0.5 focus-visible:outline-sky-500",
+      nil =>
+        "border border-slate-200 bg-white/90 text-slate-900 shadow-sm hover:border-slate-300 hover:bg-white focus-visible:outline-slate-400"
+    }
 
-    assigns =
-      assign_new(assigns, :class, fn ->
-        ["btn", Map.fetch!(variants, assigns[:variant])]
-      end)
+    button_classes =
+      [
+        "inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2 text-sm font-semibold transition duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-60",
+        Map.fetch!(variants, assigns[:variant])
+      ] ++ List.wrap(assigns[:class])
+
+    assigns = assign(assigns, :button_classes, button_classes)
 
     if rest[:href] || rest[:navigate] || rest[:patch] do
       ~H"""
-      <.link class={@class} {@rest}>
+      <.link class={@button_classes} {@rest}>
         {render_slot(@inner_block)}
       </.link>
       """
     else
       ~H"""
-      <button class={@class} {@rest}>
+      <button class={@button_classes} {@rest}>
         {render_slot(@inner_block)}
       </button>
       """
@@ -205,26 +215,28 @@ defmodule TriageWeb.CoreComponents do
       end)
 
     ~H"""
-    <div class="fieldset mb-2">
-      <label>
+    <div class="space-y-2">
+      <input
+        type="hidden"
+        name={@name}
+        value="false"
+        disabled={@rest[:disabled]}
+        form={@rest[:form]}
+      />
+      <label class="flex items-center gap-3 text-sm font-medium text-slate-700">
         <input
-          type="hidden"
+          type="checkbox"
+          id={@id}
           name={@name}
-          value="false"
-          disabled={@rest[:disabled]}
-          form={@rest[:form]}
+          value="true"
+          checked={@checked}
+          class={
+            @class ||
+              "size-4 rounded-md border border-slate-300 text-sky-600 focus:ring-2 focus:ring-sky-500"
+          }
+          {@rest}
         />
-        <span class="label">
-          <input
-            type="checkbox"
-            id={@id}
-            name={@name}
-            value="true"
-            checked={@checked}
-            class={@class || "checkbox checkbox-sm"}
-            {@rest}
-          />{@label}
-        </span>
+        <span :if={@label}>{@label}</span>
       </label>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
@@ -233,13 +245,18 @@ defmodule TriageWeb.CoreComponents do
 
   def input(%{type: "select"} = assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="space-y-2">
+      <label class="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+        <span :if={@label}>{@label}</span>
         <select
           id={@id}
           name={@name}
-          class={[@class || "w-full select", @errors != [] && (@error_class || "select-error")]}
+          class={[
+            @class ||
+              "block w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-base text-slate-900 shadow-sm transition focus:border-slate-400 focus:ring-4 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100",
+            @errors != [] &&
+              (@error_class || "border-rose-400 focus:border-rose-500 focus:ring-rose-100")
+          ]}
           multiple={@multiple}
           {@rest}
         >
@@ -254,15 +271,17 @@ defmodule TriageWeb.CoreComponents do
 
   def input(%{type: "textarea"} = assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="space-y-2">
+      <label class="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+        <span :if={@label}>{@label}</span>
         <textarea
           id={@id}
           name={@name}
           class={[
-            @class || "w-full textarea",
-            @errors != [] && (@error_class || "textarea-error")
+            @class ||
+              "block w-full rounded-3xl border border-slate-200 bg-white/90 px-4 py-3 text-base text-slate-900 shadow-sm transition focus:border-slate-400 focus:ring-4 focus:ring-sky-100 disabled:cursor-not-allowed disabled:bg-slate-100",
+            @errors != [] &&
+              (@error_class || "border-rose-400 focus:border-rose-500 focus:ring-rose-100")
           ]}
           {@rest}
         >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
@@ -275,17 +294,19 @@ defmodule TriageWeb.CoreComponents do
   # All other inputs text, datetime-local, url, password, etc. are handled here...
   def input(assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="space-y-2">
+      <label class="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+        <span :if={@label}>{@label}</span>
         <input
           type={@type}
           name={@name}
           id={@id}
           value={Phoenix.HTML.Form.normalize_value(@type, @value)}
           class={[
-            @class || "w-full input",
-            @errors != [] && (@error_class || "input-error")
+            @class ||
+              "block w-full rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 text-base text-slate-900 shadow-sm transition focus:border-slate-400 focus:ring-4 focus:ring-sky-100 placeholder:text-slate-400 disabled:cursor-not-allowed disabled:bg-slate-100",
+            @errors != [] &&
+              (@error_class || "border-rose-400 focus:border-rose-500 focus:ring-rose-100")
           ]}
           {@rest}
         />
@@ -298,7 +319,7 @@ defmodule TriageWeb.CoreComponents do
   # Helper used by inputs to generate form errors
   defp error(assigns) do
     ~H"""
-    <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
+    <p class="mt-1.5 flex items-center gap-2 text-sm font-medium text-rose-600">
       <.icon name="hero-exclamation-circle" class="size-5" />
       {render_slot(@inner_block)}
     </p>
@@ -319,12 +340,31 @@ defmodule TriageWeb.CoreComponents do
         <h1 class="text-lg font-semibold leading-8">
           {render_slot(@inner_block)}
         </h1>
-        <p :if={@subtitle != []} class="text-sm text-base-content/70">
+        <p :if={@subtitle != []} class="text-sm text-slate-500">
           {render_slot(@subtitle)}
         </p>
       </div>
       <div class="flex-none">{render_slot(@actions)}</div>
     </header>
+    """
+  end
+
+  @doc """
+  Renders a subtle divider with an optional label.
+  """
+  attr :class, :any, default: nil
+  slot :inner_block
+
+  def divider(assigns) do
+    ~H"""
+    <div class={[
+      "my-6 flex items-center gap-3 text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-slate-400",
+      @class
+    ]}>
+      <span class="h-px flex-1 bg-slate-200"></span>
+      <span :if={@inner_block != []} class="shrink-0">{render_slot(@inner_block)}</span>
+      <span class="h-px flex-1 bg-slate-200"></span>
+    </div>
     """
   end
 
@@ -360,34 +400,49 @@ defmodule TriageWeb.CoreComponents do
       end
 
     ~H"""
-    <table class="table table-zebra">
-      <thead>
-        <tr>
-          <th :for={col <- @col}>{col[:label]}</th>
-          <th :if={@action != []}>
-            <span class="sr-only">{gettext("Actions")}</span>
-          </th>
-        </tr>
-      </thead>
-      <tbody id={@id} phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}>
-        <tr :for={row <- @rows} id={@row_id && @row_id.(row)}>
-          <td
-            :for={col <- @col}
-            phx-click={@row_click && @row_click.(row)}
-            class={@row_click && "hover:cursor-pointer"}
+    <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white/80 shadow-sm">
+      <table class="min-w-full divide-y divide-slate-100 text-left text-sm text-slate-600">
+        <thead class="bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <tr>
+            <th :for={col <- @col} class="px-6 py-3 font-semibold">
+              {col[:label]}
+            </th>
+            <th :if={@action != []} class="px-6 py-3 font-semibold">
+              <span class="sr-only">{gettext("Actions")}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody
+          id={@id}
+          class="divide-y divide-slate-100 bg-white"
+          phx-update={is_struct(@rows, Phoenix.LiveView.LiveStream) && "stream"}
+        >
+          <tr
+            :for={row <- @rows}
+            id={@row_id && @row_id.(row)}
+            class="transition hover:bg-slate-50"
           >
-            {render_slot(col, @row_item.(row))}
-          </td>
-          <td :if={@action != []} class="w-0 font-semibold">
-            <div class="flex gap-4">
-              <%= for action <- @action do %>
-                {render_slot(action, @row_item.(row))}
-              <% end %>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+            <td
+              :for={col <- @col}
+              phx-click={@row_click && @row_click.(row)}
+              class={[
+                "px-6 py-4 align-top",
+                @row_click && "cursor-pointer"
+              ]}
+            >
+              {render_slot(col, @row_item.(row))}
+            </td>
+            <td :if={@action != []} class="px-6 py-4 text-right font-semibold">
+              <div class="flex items-center justify-end gap-4">
+                <%= for action <- @action do %>
+                  {render_slot(action, @row_item.(row))}
+                <% end %>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     """
   end
 
@@ -407,12 +462,13 @@ defmodule TriageWeb.CoreComponents do
 
   def list(assigns) do
     ~H"""
-    <ul class="list">
-      <li :for={item <- @item} class="list-row">
-        <div class="list-col-grow">
-          <div class="font-bold">{item.title}</div>
-          <div>{render_slot(item)}</div>
-        </div>
+    <ul class="divide-y divide-slate-200 rounded-3xl border border-slate-200 bg-white/80 shadow-sm">
+      <li
+        :for={item <- @item}
+        class="flex flex-col gap-1 px-6 py-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div class="font-semibold uppercase tracking-wide text-slate-400">{item.title}</div>
+        <div class="text-base text-slate-900">{render_slot(item)}</div>
       </li>
     </ul>
     """

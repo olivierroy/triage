@@ -1,0 +1,40 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <div class="mx-auto max-w-sm">
+    <div class="text-center">
+      <.header>
+        Register for an account
+        <:subtitle>
+          Already registered?
+          <.link navigate={~p"/users/log-in"} class="font-semibold text-brand hover:underline">
+            Log in
+          </.link>
+          to your account now.
+        </:subtitle>
+      </.header>
+    </div>
+
+    <a
+      href={~p"/users/oauth/google/request"}
+      class="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/90 px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white"
+    >
+      <.icon name="hero-globe-alt" class="size-5" /> Sign up with Google
+    </a>
+
+    <.divider>or</.divider>
+
+    <.form :let={f} for={@changeset} action={~p"/users/register"}>
+      <.input
+        field={f[:email]}
+        type="email"
+        label="Email"
+        autocomplete="email"
+        required
+        phx-mounted={JS.focus()}
+      />
+
+      <.button phx-disable-with="Creating account..." class="w-full">
+        Create an account
+      </.button>
+    </.form>
+  </div>
+</Layouts.app>
