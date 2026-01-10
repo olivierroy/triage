@@ -49,6 +49,10 @@ defmodule TriageWeb.Router do
 
       live_dashboard "/dashboard", metrics: TriageWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
+
+      # Oban Web Dashboard
+      import Oban.Web.Router
+      oban_dashboard("/oban")
     end
   end
 

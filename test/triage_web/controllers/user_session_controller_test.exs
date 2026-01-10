@@ -12,9 +12,8 @@ defmodule TriageWeb.UserSessionControllerTest do
     test "renders login page", %{conn: conn} do
       conn = get(conn, ~p"/users/log-in")
       response = html_response(conn, 200)
-      assert response =~ "Log in"
-      assert response =~ ~p"/users/register"
-      assert response =~ "Log in with email"
+      assert response =~ "Sign in with Google"
+      assert response =~ "Welcome to Triage"
     end
 
     test "renders login page with email filled in (sudo mode)", %{conn: conn, user: user} do
@@ -25,19 +24,14 @@ defmodule TriageWeb.UserSessionControllerTest do
         |> html_response(200)
 
       assert html =~ "You need to reauthenticate"
-      refute html =~ "Register"
-      assert html =~ "Log in with email"
-
-      assert html =~
-               ~s(<input type="email" name="user[email]" id="login_form_magic_email" value="#{user.email}")
+      assert html =~ "Sign in with Google"
     end
 
     test "renders login page (email + password)", %{conn: conn} do
       conn = get(conn, ~p"/users/log-in?mode=password")
       response = html_response(conn, 200)
-      assert response =~ "Log in"
-      assert response =~ ~p"/users/register"
-      assert response =~ "Log in with email"
+      assert response =~ "Sign in with Google"
+      assert response =~ "Welcome to Triage"
     end
   end
 
@@ -61,7 +55,7 @@ defmodule TriageWeb.UserSessionControllerTest do
       conn = get(conn, ~p"/users/log-in/#{token}")
       html = html_response(conn, 200)
       refute html =~ "Confirm my account"
-      assert html =~ "Log in"
+      assert html =~ "Sign in with Google"
     end
 
     test "raises error for invalid token", %{conn: conn} do
@@ -89,7 +83,7 @@ defmodule TriageWeb.UserSessionControllerTest do
       conn = get(conn, ~p"/")
       response = html_response(conn, 200)
       assert response =~ user.email
-      assert response =~ ~p"/users/settings"
+      refute response =~ ~p"/users/settings"
       assert response =~ ~p"/users/log-out"
     end
 
@@ -133,7 +127,7 @@ defmodule TriageWeb.UserSessionControllerTest do
         })
 
       response = html_response(conn, 200)
-      assert response =~ "Log in"
+      assert response =~ "Sign in with Google"
       assert response =~ "Invalid email or password"
     end
   end
@@ -164,7 +158,7 @@ defmodule TriageWeb.UserSessionControllerTest do
       conn = get(conn, ~p"/")
       response = html_response(conn, 200)
       assert response =~ user.email
-      assert response =~ ~p"/users/settings"
+      refute response =~ ~p"/users/settings"
       assert response =~ ~p"/users/log-out"
     end
 
@@ -188,7 +182,7 @@ defmodule TriageWeb.UserSessionControllerTest do
       conn = get(conn, ~p"/")
       response = html_response(conn, 200)
       assert response =~ user.email
-      assert response =~ ~p"/users/settings"
+      refute response =~ ~p"/users/settings"
       assert response =~ ~p"/users/log-out"
     end
 

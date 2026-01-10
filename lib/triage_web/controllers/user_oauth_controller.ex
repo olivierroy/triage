@@ -18,9 +18,9 @@ defmodule TriageWeb.UserOAuthController do
 
     {prompt, action} =
       if conn.assigns[:current_scope] do
-        {"consent select_account", "connect"}
+        {"select_account consent", "connect"}
       else
-        {"consent", "login"}
+        {nil, "login"}
       end
 
     config =

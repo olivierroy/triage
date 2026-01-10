@@ -24,7 +24,7 @@ defmodule Triage.Gmail do
         authorization_params:
           GoogleOAuth.authorization_params(@gmail_scope,
             access_type: "offline",
-            prompt: "consent select_account"
+            prompt: "select_account consent"
           )
       )
 

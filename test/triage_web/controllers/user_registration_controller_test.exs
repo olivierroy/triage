@@ -7,9 +7,9 @@ defmodule TriageWeb.UserRegistrationControllerTest do
     test "renders registration page", %{conn: conn} do
       conn = get(conn, ~p"/users/register")
       response = html_response(conn, 200)
-      assert response =~ "Register"
+      assert response =~ "Get started with Triage"
+      assert response =~ "Sign up with Google"
       assert response =~ ~p"/users/log-in"
-      assert response =~ ~p"/users/register"
     end
 
     test "redirects if already logged in", %{conn: conn} do
@@ -34,17 +34,6 @@ defmodule TriageWeb.UserRegistrationControllerTest do
 
       assert conn.assigns.flash["info"] =~
                ~r/An email was sent to .*, please access it to confirm your account/
-    end
-
-    test "render errors for invalid data", %{conn: conn} do
-      conn =
-        post(conn, ~p"/users/register", %{
-          "user" => %{"email" => "with spaces"}
-        })
-
-      response = html_response(conn, 200)
-      assert response =~ "Register"
-      assert response =~ "must have the @ sign and no spaces"
     end
   end
 end

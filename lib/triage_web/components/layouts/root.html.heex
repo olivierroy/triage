@@ -14,7 +14,7 @@
     </script>
   </head>
   <body class="min-h-screen bg-gradient-to-b from-white via-slate-50 to-slate-100 text-slate-900 antialiased">
-    <header class="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-lg shadow-slate-200/50">
+    <header class="md:sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-lg shadow-slate-200/50">
       <nav class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <.link href={~p"/"} class="flex items-center gap-3 text-slate-900">
           <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-500 text-lg font-semibold text-white shadow-lg shadow-sky-500/30">
@@ -65,12 +65,6 @@
               <span class="font-semibold text-slate-900">{@current_scope.user.email}</span>
             </div>
             <.link
-              href={~p"/users/settings"}
-              class="hidden rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-900 transition hover:border-slate-400 hover:bg-slate-50 sm:inline-flex"
-            >
-              Settings
-            </.link>
-            <.link
               href={~p"/users/log-out"}
               method="delete"
               class="rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 transition hover:-translate-y-0.5"
@@ -79,16 +73,10 @@
             </.link>
           <% else %>
             <.link
-              href={~p"/users/log-in"}
-              class="hidden rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-900 transition hover:border-slate-400 hover:bg-slate-50 sm:inline-flex"
-            >
-              Log in
-            </.link>
-            <.link
-              href={~p"/users/register"}
+              href={~p"/users/oauth/google/request"}
               class="rounded-full bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-500/30 transition hover:-translate-y-0.5"
             >
-              Get started
+              Sign in with Google
             </.link>
           <% end %>
         </div>

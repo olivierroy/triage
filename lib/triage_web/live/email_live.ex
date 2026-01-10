@@ -11,6 +11,7 @@ defmodule TriageWeb.EmailLive do
     {:ok,
      socket
      |> assign(:selected_email, nil)
+     |> assign(:selected_ids, MapSet.new())
      |> stream(:emails, [])}
   end
 
@@ -22,6 +23,7 @@ defmodule TriageWeb.EmailLive do
      socket
      |> assign(:category_id, category_id)
      |> assign(:page, page)
+     |> assign(:selected_ids, MapSet.new())
      |> fetch_emails()}
   end
 
@@ -80,6 +82,76 @@ defmodule TriageWeb.EmailLive do
     {:noreply, assign(socket, :selected_email, nil)}
   end
 
+  def handle_event("toggle_selection", %{"id" => id}, socket) do
+    selected_ids = socket.assigns.selected_ids
+
+    new_selected_ids =
+      if MapSet.member?(selected_ids, id) do
+        MapSet.delete(selected_ids, id)
+      else
+        MapSet.put(selected_ids, id)
+      end
+
+    {:noreply, assign(socket, :selected_ids, new_selected_ids)}
+  end
+
+  def handle_event("toggle_all", _params, socket) do
+    current_page_ids = socket.assigns.current_page_ids
+    selected_ids = socket.assigns.selected_ids
+
+    # If all items on current page are already selected, then deselect all.
+    # Otherwise, select everything on current page.
+    all_on_page_selected? = Enum.all?(current_page_ids, &MapSet.member?(selected_ids, &1))
+
+    new_selected_ids =
+      if all_on_page_selected? do
+        # Remove current page IDs from selection
+        Enum.reduce(current_page_ids, selected_ids, fn id, acc -> MapSet.delete(acc, id) end)
+      else
+        # Add current page IDs to selection
+        Enum.reduce(current_page_ids, selected_ids, fn id, acc -> MapSet.put(acc, id) end)
+      end
+
+    {:noreply, assign(socket, :selected_ids, new_selected_ids)}
+  end
+
+  def handle_event("bulk_delete", _, socket) do
+    current_scope = socket.assigns[:current_scope]
+    ids = MapSet.to_list(socket.assigns.selected_ids)
+
+    if Enum.empty?(ids) do
+      {:noreply, socket}
+    else
+      # Perform deletion
+      results = Enum.map(ids, &Gmail.delete_email(current_scope, &1))
+
+      {successes, failures} =
+        Enum.reduce(results, {0, 0}, fn
+          {:ok, _}, {s, f} -> {s + 1, f}
+          {:error, _}, {s, f} -> {s, f + 1}
+        end)
+
+      socket =
+        socket
+        |> assign(:selected_ids, MapSet.new())
+        |> put_flash(
+          :info,
+          "Deleted #{successes} emails. #{if failures > 0, do: "Failed to delete #{failures} emails.", else: ""}"
+        )
+        |> fetch_emails()
+
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("bulk_unsubscribe", _, socket) do
+    {:noreply, put_flash(socket, :error, "Bulk unsubscribe is not yet implemented.")}
+  end
+
+  def handle_event("unsubscribe", %{"id" => _id}, socket) do
+    {:noreply, put_flash(socket, :error, "Unsubscribe is not yet implemented.")}
+  end
+
   defp fetch_emails(socket) do
     current_scope = socket.assigns[:current_scope]
     category_id = socket.assigns[:category_id]
@@ -112,6 +184,7 @@ defmodule TriageWeb.EmailLive do
     |> assign(:title, title)
     |> assign(:total_pages, max(1, ceil(total_count / @page_size)))
     |> assign(:has_emails?, not Enum.empty?(emails))
+    |> assign(:current_page_ids, Enum.map(emails, &to_string(&1.id)))
     |> stream(:emails, emails, reset: true)
   end
 end

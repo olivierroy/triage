@@ -548,13 +548,13 @@ defmodule TriageWeb.CoreComponents do
         tabindex="-1"
       >
         <div class="flex min-h-full items-center justify-center">
-          <div class={["w-full p-4 sm:p-6 lg:py-8", @max_width]}>
+          <div class={["w-full p-2 sm:p-6 lg:py-8", @max_width]}>
             <.focus_wrap
               id={"#{@id}-container"}
               phx-window-keydown={JS.exec("data-cancel", to: "##{@id}")}
               phx-key="escape"
               phx-click-away={JS.exec("data-cancel", to: "##{@id}")}
-              class="relative rounded-3xl bg-white p-8 shadow-2xl shadow-slate-900/10 ring-1 ring-slate-900/5 transition"
+              class="relative rounded-3xl bg-white p-3 sm:p-8 shadow-2xl shadow-slate-900/10 ring-1 ring-slate-900/5 transition"
             >
               <div class="absolute top-6 right-5">
                 <button

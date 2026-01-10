@@ -34,7 +34,7 @@ defmodule TriageWeb.EmailAccountControllerTest do
           email_account: %{archive_emails: "false", paused: "true"}
         )
 
-      assert redirected_to(conn) == ~p"/email_accounts/#{email_account}/edit"
+      assert redirected_to(conn) == ~p"/email_accounts"
 
       scope = Triage.Accounts.Scope.for_user(user)
       updated_account = Triage.Gmail.get_email_account!(scope, email_account.id)

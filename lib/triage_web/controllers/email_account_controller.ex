@@ -21,7 +21,7 @@ defmodule TriageWeb.EmailAccountController do
       {:ok, _email_account} ->
         conn
         |> put_flash(:info, "Email account updated successfully.")
-        |> redirect(to: ~p"/email_accounts/#{id}/edit")
+        |> redirect(to: ~p"/email_accounts")
 
       {:error, %Ecto.Changeset{} = changeset} ->
         render(conn, :edit, email_account: email_account, changeset: changeset)
