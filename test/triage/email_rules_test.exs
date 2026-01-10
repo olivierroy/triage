@@ -82,4 +82,38 @@ defmodule Triage.EmailRulesTest do
       assert [] == EmailRules.list_email_rules(scope)
     end
   end
+
+  describe "evaluate_email/2" do
+    test "returns match info when a rule matches sender" do
+      scope = Scope.for_user(user_fixture())
+      _rule = email_rule_fixture(scope, %{match_senders: ["boss@work.com"], action: "process"})
+      email_attrs = %{from: "boss@work.com", subject: "Hello", snippet: "..."}
+
+      assert %{action: "process", archive: true} = EmailRules.evaluate_email(scope, email_attrs)
+    end
+
+    test "returns match info when a rule matches subject" do
+      scope = Scope.for_user(user_fixture())
+      _rule = email_rule_fixture(scope, %{match_subject_keywords: ["Urgent"], action: "process"})
+      email_attrs = %{from: "anyone@me.com", subject: "This is urgent", snippet: "..."}
+
+      assert %{action: "process"} = EmailRules.evaluate_email(scope, email_attrs)
+    end
+
+    test "returns match info when a rule matches body/snippet" do
+      scope = Scope.for_user(user_fixture())
+      _rule = email_rule_fixture(scope, %{match_body_keywords: ["win"], action: "skip"})
+      email_attrs = %{from: "lotto@me.com", subject: "Hello", snippet: "You win!"}
+
+      assert %{action: "skip"} = EmailRules.evaluate_email(scope, email_attrs)
+    end
+
+    test "returns nil when no rule matches" do
+      scope = Scope.for_user(user_fixture())
+      _rule = email_rule_fixture(scope, %{match_senders: ["boss@work.com"]})
+      email_attrs = %{from: "friend@me.com", subject: "Hello", snippet: "..."}
+
+      assert EmailRules.evaluate_email(scope, email_attrs) == nil
+    end
+  end
 end

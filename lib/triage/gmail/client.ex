@@ -1,4 +1,5 @@
 defmodule Triage.Gmail.Client do
+  @behaviour Triage.Gmail.ClientBehaviour
   @moduledoc """
   Low-level Gmail API client using Req.
   """
@@ -11,6 +12,7 @@ defmodule Triage.Gmail.Client do
     Application.get_env(:triage, :gmail_client_req_opts, [])
   end
 
+  @impl true
   def list_messages(access_token, opts \\ []) do
     user_id = Keyword.get(opts, :user_id, "me")
     max_results = Keyword.get(opts, :max_results, 100)
@@ -40,6 +42,7 @@ defmodule Triage.Gmail.Client do
     end
   end
 
+  @impl true
   def get_message(access_token, message_id, opts \\ []) do
     user_id = Keyword.get(opts, :user_id, "me")
     format = Keyword.get(opts, :format, "full")
@@ -66,6 +69,7 @@ defmodule Triage.Gmail.Client do
     end
   end
 
+  @impl true
   def get_thread(access_token, thread_id, opts \\ []) do
     user_id = Keyword.get(opts, :user_id, "me")
     format = Keyword.get(opts, :format, "full")
@@ -92,6 +96,7 @@ defmodule Triage.Gmail.Client do
     end
   end
 
+  @impl true
   def get_labels(access_token, opts \\ []) do
     user_id = Keyword.get(opts, :user_id, "me")
 
@@ -108,6 +113,7 @@ defmodule Triage.Gmail.Client do
     end
   end
 
+  @impl true
   def modify_message(access_token, message_id, payload, opts \\ []) do
     user_id = Keyword.get(opts, :user_id, "me")
 
@@ -123,6 +129,7 @@ defmodule Triage.Gmail.Client do
     end
   end
 
+  @impl true
   def delete_message(access_token, message_id, opts \\ []) do
     user_id = Keyword.get(opts, :user_id, "me")
 
@@ -145,6 +152,7 @@ defmodule Triage.Gmail.Client do
     end
   end
 
+  @impl true
   def trash_message(access_token, message_id, opts \\ []) do
     user_id = Keyword.get(opts, :user_id, "me")
 

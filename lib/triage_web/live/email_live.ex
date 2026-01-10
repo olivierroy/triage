@@ -87,13 +87,13 @@ defmodule TriageWeb.EmailLive do
     offset = (page - 1) * @page_size
 
     category =
-      if category_id && category_id != "none",
+      if category_id not in [nil, "", "none"],
         do: Categories.get_category!(current_scope, category_id)
 
     opts =
       case category_id do
         "none" -> [category_id: nil]
-        id when is_binary(id) -> [category_id: id]
+        id when is_binary(id) and id != "" -> [category_id: id]
         _ -> []
       end
 

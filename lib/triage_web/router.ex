@@ -10,6 +10,7 @@ defmodule TriageWeb.Router do
     plug :put_root_layout, html: {TriageWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug TriageWeb.Plugs.CSPPlug
     plug :fetch_current_scope_for_user
   end
 

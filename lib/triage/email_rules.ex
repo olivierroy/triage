@@ -77,7 +77,9 @@ defmodule Triage.EmailRules do
        when senders == [],
        do: false
 
-  defp matches_sender?(%EmailRule{match_senders: senders}, %{from: from}) do
+  defp matches_sender?(%EmailRule{match_senders: senders}, email_attrs) do
+    from = Map.get(email_attrs, :from) || ""
+
     Enum.any?(senders, fn sender ->
       from =~ sender
     end)
@@ -87,8 +89,9 @@ defmodule Triage.EmailRules do
        when keywords == [],
        do: false
 
-  defp matches_subject?(%EmailRule{match_subject_keywords: keywords}, %{subject: subject}) do
-    email_text = String.downcase(subject || "")
+  defp matches_subject?(%EmailRule{match_subject_keywords: keywords}, email_attrs) do
+    subject = Map.get(email_attrs, :subject) || ""
+    email_text = String.downcase(subject)
 
     Enum.any?(keywords, fn keyword ->
       String.contains?(email_text, String.downcase(keyword))
@@ -100,7 +103,7 @@ defmodule Triage.EmailRules do
        do: false
 
   defp matches_body?(%EmailRule{match_body_keywords: keywords}, email_attrs) do
-    body_text = email_attrs.body_text || email_attrs.snippet || ""
+    body_text = Map.get(email_attrs, :body_text) || Map.get(email_attrs, :snippet) || ""
 
     email_text = String.downcase(body_text)
 

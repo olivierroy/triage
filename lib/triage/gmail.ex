@@ -9,8 +9,11 @@ defmodule Triage.Gmail do
   alias Triage.Encryption
   alias Triage.EmailAccounts.EmailAccount
   alias Triage.Emails.Email
-  alias Triage.Gmail.Client
+
   alias Triage.Repo
+
+  defp gmail_client, do: Application.get_env(:triage, :gmail_client)
+  defp ai_service, do: Application.get_env(:triage, :ai_service)
 
   @gmail_scope "https://www.googleapis.com/auth/gmail.modify"
 
@@ -218,7 +221,7 @@ defmodule Triage.Gmail do
   defp fetch_all_emails(access_token, opts, acc \\ [], page_token \\ nil) do
     fetch_opts = Keyword.put(opts, :page_token, page_token)
 
-    case Client.list_messages(access_token, fetch_opts) do
+    case gmail_client().list_messages(access_token, fetch_opts) do
       {:ok, messages, nil} when messages == [] ->
         {:ok, Enum.reverse(acc)}
 
@@ -245,7 +248,7 @@ defmodule Triage.Gmail do
   end
 
   defp import_messages(email_account, messages) do
-    scope = Triage.Accounts.Scope.for_user(email_account.user_id)
+    scope = %Triage.Accounts.Scope{user: %Triage.Accounts.User{id: email_account.user_id}}
     categories = Triage.Categories.list_categories(scope)
 
     case get_valid_token(email_account) do
@@ -268,9 +271,9 @@ defmodule Triage.Gmail do
   end
 
   defp import_single_message(access_token, email_account, %{"id" => message_id}, categories) do
-    with {:ok, gmail_message} <- Client.get_message(access_token, message_id),
+    with {:ok, gmail_message} <- gmail_client().get_message(access_token, message_id, []),
          {:ok, email_attrs} <- parse_gmail_message(gmail_message, email_account) do
-      scope = Triage.Accounts.Scope.for_user(email_account.user_id)
+      scope = %Triage.Accounts.Scope{user: %Triage.Accounts.User{id: email_account.user_id}}
 
       case Triage.EmailRules.evaluate_email(scope, email_attrs) do
         %{action: "skip"} ->
@@ -312,7 +315,7 @@ defmodule Triage.Gmail do
 
   defp process_email(email_attrs, categories) do
     email_attrs =
-      case Triage.Gmail.AI.categorize_and_summarize(email_attrs, categories) do
+      case ai_service().categorize_and_summarize(email_attrs, categories) do
         {:ok, ai_result} ->
           Map.merge(email_attrs, ai_result)
 
@@ -582,16 +585,21 @@ defmodule Triage.Gmail do
     email = get_email!(scope, id) |> Repo.preload(:email_account)
 
     with {:ok, access_token} <- get_valid_token(email.email_account),
-         :ok <- Client.trash_message(access_token, email.gmail_message_id, opts) do
+         :ok <- gmail_client().trash_message(access_token, email.gmail_message_id, opts) do
       Repo.delete(email)
     end
   end
 
   def archive_message(%Email{} = email, %EmailAccount{} = email_account) do
     with {:ok, access_token} <- get_valid_token(email_account) do
-      Client.modify_message(access_token, email.gmail_message_id, %{
-        removeLabelIds: ["INBOX"]
-      })
+      gmail_client().modify_message(
+        access_token,
+        email.gmail_message_id,
+        %{
+          removeLabelIds: ["INBOX"]
+        },
+        []
+      )
     end
   end
 
@@ -612,7 +620,7 @@ defmodule Triage.Gmail do
       snippet: email.snippet
     }
 
-    case Triage.Gmail.AI.categorize_and_summarize(email_attrs, categories) do
+    case ai_service().categorize_and_summarize(email_attrs, categories) do
       {:ok, ai_result} ->
         email
         |> Email.changeset(ai_result)

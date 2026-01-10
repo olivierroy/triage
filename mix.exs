@@ -72,7 +72,10 @@ defmodule Triage.MixProject do
       {:assent, "~> 0.2"},
       {:pbkdf2_elixir, "~> 2.0"},
       {:cloak, "~> 1.1"},
-      {:oban, "~> 2.17"}
+      {:oban, "~> 2.17"},
+      {:mox, "~> 1.1", only: :test},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 

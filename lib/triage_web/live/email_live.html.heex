@@ -133,7 +133,9 @@
     <div class="space-y-6">
       <div class="flex items-start justify-between gap-4">
         <div class="min-w-0 flex-1">
-          <h2 class="text-2xl font-bold text-slate-900 truncate">{@selected_email.subject || "(No Subject)"}</h2>
+          <h2 class="text-2xl font-bold text-slate-900 truncate">
+            {@selected_email.subject || "(No Subject)"}
+          </h2>
           <div class="mt-2 flex flex-col gap-1 text-sm text-slate-500">
             <p><span class="font-semibold text-slate-700">From:</span> {@selected_email.from}</p>
             <p>

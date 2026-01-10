@@ -9,6 +9,7 @@ defmodule Triage.Application do
   def start(_type, _args) do
     children = [
       TriageWeb.Telemetry,
+      Triage.Vault,
       Triage.Repo,
       {DNSCluster, query: Application.get_env(:triage, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Triage.PubSub},

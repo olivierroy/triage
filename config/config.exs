@@ -22,7 +22,9 @@ config :triage, :scopes,
 
 config :triage,
   ecto_repos: [Triage.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  gmail_client: Triage.Gmail.Client,
+  ai_service: Triage.Gmail.AI
 
 # Configure the endpoint
 config :triage, TriageWeb.Endpoint,
