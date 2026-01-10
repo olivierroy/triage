@@ -7,6 +7,10 @@ defmodule Triage.Gmail.Client do
 
   @base_url "https://www.googleapis.com/gmail/v1/users"
 
+  defp default_req_opts do
+    Application.get_env(:triage, :gmail_client_req_opts, [])
+  end
+
   def list_messages(access_token, opts \\ []) do
     user_id = Keyword.get(opts, :user_id, "me")
     max_results = Keyword.get(opts, :max_results, 100)
@@ -24,7 +28,7 @@ defmodule Triage.Gmail.Client do
 
     url = "#{@base_url}/#{user_id}/messages"
 
-    case req_get(url, access_token, params: params) do
+    case req_get(url, access_token, params: params, plug: opts[:plug]) do
       {:ok, %{body: body}} ->
         messages = Map.get(body, "messages", [])
         next_page_token = Map.get(body, "nextPageToken")
@@ -52,7 +56,7 @@ defmodule Triage.Gmail.Client do
 
     url = "#{@base_url}/#{user_id}/messages/#{message_id}"
 
-    case req_get(url, access_token, params: params) do
+    case req_get(url, access_token, [params: params] ++ opts) do
       {:ok, %{body: body}} ->
         {:ok, body}
 
@@ -78,7 +82,7 @@ defmodule Triage.Gmail.Client do
 
     url = "#{@base_url}/#{user_id}/threads/#{thread_id}"
 
-    case req_get(url, access_token, params: params) do
+    case req_get(url, access_token, [params: params] ++ opts) do
       {:ok, %{body: body}} ->
         {:ok, body}
 
@@ -93,7 +97,7 @@ defmodule Triage.Gmail.Client do
 
     url = "#{@base_url}/#{user_id}/labels"
 
-    case req_get(url, access_token) do
+    case req_get(url, access_token, opts) do
       {:ok, %{body: body}} ->
         labels = Map.get(body, "labels", [])
         {:ok, labels}
@@ -109,7 +113,7 @@ defmodule Triage.Gmail.Client do
 
     url = "#{@base_url}/#{user_id}/messages/#{message_id}/modify"
 
-    case req_post(url, access_token, payload) do
+    case req_post(url, access_token, payload, opts) do
       {:ok, %{body: body}} ->
         {:ok, body}
 
@@ -119,20 +123,83 @@ defmodule Triage.Gmail.Client do
     end
   end
 
-  defp req_get(url, access_token, opts \\ []) do
-    headers = [
-      {"Authorization", "Bearer #{access_token}"}
-    ]
+  def delete_message(access_token, message_id, opts \\ []) do
+    user_id = Keyword.get(opts, :user_id, "me")
 
-    Req.get(url, Keyword.merge(opts, headers: headers))
+    url = "#{@base_url}/#{user_id}/messages/#{message_id}"
+
+    case req_delete(url, access_token, opts) do
+      {:ok, %{status: status}} when status in 200..299 ->
+        :ok
+
+      {:ok, %{status: status, body: body}} ->
+        Logger.error("Failed to delete Gmail message #{message_id}: Status #{status}, Body: #{inspect(body)}")
+        {:error, :api_error}
+
+      {:error, reason} ->
+        Logger.error("Failed to delete Gmail message #{message_id}: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
 
-  defp req_post(url, access_token, body, opts \\ []) do
+  def trash_message(access_token, message_id, opts \\ []) do
+    user_id = Keyword.get(opts, :user_id, "me")
+
+    url = "#{@base_url}/#{user_id}/messages/#{message_id}/trash"
+
+    case req_post(url, access_token, %{}, opts) do
+      {:ok, %{status: status}} when status in 200..299 ->
+        :ok
+
+      {:ok, %{status: status, body: body}} ->
+        Logger.error("Failed to trash Gmail message #{message_id}: Status #{status}, Body: #{inspect(body)}")
+        {:error, :api_error}
+
+      {:error, reason} ->
+        Logger.error("Failed to trash Gmail message #{message_id}: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  defp req_get(url, access_token, opts) do
+    headers = [{"Authorization", "Bearer #{access_token}"}]
+    {req_opts, _adapter_opts} = Keyword.split(opts, [:params, :json, :body, :headers, :plug])
+    merged_headers = headers ++ (req_opts[:headers] || [])
+
+    merged_opts =
+      default_req_opts()
+      |> Keyword.merge(req_opts)
+      |> Keyword.put(:headers, merged_headers)
+
+    Req.get(url, merged_opts)
+  end
+
+  defp req_post(url, access_token, body, opts) do
     headers = [
       {"Authorization", "Bearer #{access_token}"},
       {"Content-Type", "application/json"}
     ]
+    {req_opts, _adapter_opts} = Keyword.split(opts, [:params, :json, :body, :headers, :plug])
+    merged_headers = headers ++ (req_opts[:headers] || [])
 
-    Req.post(url, Keyword.merge(opts, headers: headers, json: body))
+    merged_opts =
+      default_req_opts()
+      |> Keyword.merge(req_opts)
+      |> Keyword.merge(headers: merged_headers, json: body)
+
+    Req.post(url, merged_opts)
+  end
+
+  defp req_delete(url, access_token, opts) do
+    headers = [{"Authorization", "Bearer #{access_token}"}]
+    {req_opts, _adapter_opts} = Keyword.split(opts, [:params, :json, :body, :headers, :plug])
+    merged_headers = headers ++ (req_opts[:headers] || [])
+
+    merged_opts =
+      default_req_opts()
+      |> Keyword.merge(req_opts)
+      |> Keyword.put(:headers, merged_headers)
+
+    Req.delete(url, merged_opts)
   end
 end

@@ -30,10 +30,19 @@
         <:col :let={account} label="Auto Archive">
           {if account.archive_emails, do: "Yes", else: "No"}
         </:col>
+        <:col :let={account} label="Last Sync">
+          <%= if account.last_synced_at do %>
+            {Calendar.strftime(account.last_synced_at, "%b %d, %H:%M")}
+          <% else %>
+            Never
+          <% end %>
+        </:col>
         <:action :let={account}>
-          <div class="sr-only">
-            <.link navigate={~p"/email_accounts/#{account}/edit"}>Edit</.link>
-          </div>
+          <.link href={~p"/users/gmail/import/#{account}"} method="post" class="text-emerald-600 hover:text-emerald-800">
+            <.icon name="hero-arrow-path" class="h-4 w-4" />
+          </.link>
+        </:action>
+        <:action :let={account}>
           <.link navigate={~p"/email_accounts/#{account}/edit"} class="text-sky-600 hover:text-sky-800">
             <.icon name="hero-pencil-square" class="h-4 w-4" />
           </.link>

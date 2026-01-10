@@ -42,24 +42,51 @@
             <div class="flex flex-wrap items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
               <div class="flex items-center gap-4">
                 <div>
-                  <p class="font-semibold text-slate-900">{account.email}</p>
-                  <p class="text-slate-500">{String.capitalize(account.provider)}</p>
+                  <div class="flex items-center gap-2">
+                    <p class="font-semibold text-slate-900">{account.email}</p>
+                    <span class={[
+                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+                      account.paused && "bg-amber-100 text-amber-700",
+                      !account.paused && "bg-emerald-100 text-emerald-700"
+                    ]}>
+                      {if account.paused, do: "Paused", else: "Active"}
+                    </span>
+                    <span class={[
+                      "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border",
+                      account.archive_emails && "bg-sky-50 text-sky-700 border-sky-100",
+                      !account.archive_emails && "bg-slate-50 text-slate-500 border-slate-200"
+                    ]}>
+                      Auto Archive: {if account.archive_emails, do: "ON", else: "OFF"}
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    <p class="text-xs text-slate-500">{String.capitalize(account.provider)}</p>
+                    <span class="text-slate-300 text-[10px]">•</span>
+                    <p class="text-xs text-slate-400">
+                      <%= if account.last_synced_at do %>
+                        Last sync: {Calendar.strftime(account.last_synced_at, "%b %d, %H:%M")}
+                      <% else %>
+                        Never synced
+                      <% end %>
+                    </p>
+                  </div>
                 </div>
-                <span class={[
-                  "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold",
-                  account.paused && "bg-amber-100 text-amber-700",
-                  !account.paused && "bg-emerald-100 text-emerald-700"
-                ]}>
-                  <span class={["h-2 w-2 rounded-full", account.paused && "bg-amber-400", !account.paused && "bg-emerald-400"]} />
-                  {if account.paused, do: "Paused", else: "Active"}
-                </span>
               </div>
-              <.link
-                href={~p"/email_accounts/#{account}/edit"}
-                class="inline-flex items-center gap-1 font-semibold text-sky-600 hover:text-sky-800"
-              >
-                <.icon name="hero-pencil-square" class="h-4 w-4" /> Edit
-              </.link>
+              <div class="flex items-center gap-4">
+                <.link
+                  href={~p"/users/gmail/import/#{account}"}
+                  method="post"
+                  class="inline-flex items-center gap-1 font-semibold text-emerald-600 hover:text-emerald-800"
+                >
+                  <.icon name="hero-arrow-path" class="h-4 w-4" /> Import
+                </.link>
+                <.link
+                  href={~p"/email_accounts/#{account}/edit"}
+                  class="inline-flex items-center gap-1 font-semibold text-sky-600 hover:text-sky-800"
+                >
+                  <.icon name="hero-pencil-square" class="h-4 w-4" /> Edit
+                </.link>
+              </div>
             </div>
           <% end %>
         <% end %>
@@ -79,7 +106,7 @@
       </div>
 
       <div class="mt-6 grid gap-4">
-        <%= if Enum.empty?(@categories) do %>
+        <%= if Enum.empty?(@categories) and !Map.has_key?(@email_counts, nil) do %>
           <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
             <p class="text-base font-semibold text-slate-900">No categories yet</p>
             <p class="mt-1 text-sm text-slate-600">
@@ -88,24 +115,58 @@
           </div>
         <% else %>
           <%= for category <- @categories do %>
-            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/70 transition hover:-translate-y-0.5">
+            <article class="group relative rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/70 transition hover:-translate-y-0.5 hover:shadow-md">
               <div class="flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-slate-900">{category.name}</h3>
-                <span class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Category
+                <h3 class="text-lg font-semibold text-slate-900">
+                  <.link href={~p"/emails?category_id=#{category}"} class="hover:text-sky-600">
+                    {category.name}
+                  </.link>
+                </h3>
+                <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                  {Map.get(@email_counts, category.id, 0)} emails
                 </span>
               </div>
-              <p class="mt-2 text-sm text-slate-600">{category.description}</p>
-              <div class="mt-4 flex justify-end">
+              <p class="mt-2 text-sm text-slate-600 line-clamp-2">{category.description}</p>
+              <div class="mt-4 flex items-center justify-between">
+                <.link
+                  href={~p"/emails?category_id=#{category}"}
+                  class="text-sm font-semibold text-sky-600 hover:text-sky-800"
+                >
+                  View emails →
+                </.link>
                 <.link
                   href={~p"/categories/#{category}/edit"}
-                  class="inline-flex items-center gap-1 text-sm font-semibold text-sky-600 hover:text-sky-800"
+                  class="inline-flex items-center gap-1 text-sm font-semibold text-slate-400 hover:text-slate-600"
                 >
                   <.icon name="hero-pencil-square" class="h-4 w-4" /> Edit
                 </.link>
               </div>
             </article>
           <% end %>
+
+          <article class="group relative rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-5 transition hover:-translate-y-0.5 hover:bg-slate-50">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-slate-900">
+                <.link href={~p"/emails?category_id=none"} class="hover:text-sky-600">
+                  Uncategorized
+                </.link>
+              </h3>
+              <span class="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                {Map.get(@email_counts, nil, 0)} emails
+              </span>
+            </div>
+            <p class="mt-2 text-sm text-slate-600">
+              Emails that haven't been sorted into a specific category.
+            </p>
+            <div class="mt-4 flex justify-end">
+              <.link
+                href={~p"/emails?category_id=none"}
+                class="text-sm font-semibold text-sky-600 hover:text-sky-800"
+              >
+                View emails →
+              </.link>
+            </div>
+          </article>
         <% end %>
       </div>
     </section>

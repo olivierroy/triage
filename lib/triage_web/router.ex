@@ -70,6 +70,8 @@ defmodule TriageWeb.Router do
     resources "/categories", CategoryController, only: [:new, :create, :edit, :update]
     resources "/email_rules", EmailRuleController, except: [:show]
     resources "/email_accounts", EmailAccountController, only: [:index, :edit, :update]
+    resources "/emails", EmailController, only: [:index, :delete]
+    post "/emails/:id/reprocess", EmailController, :reprocess
 
     post "/users/gmail/disconnect/:id", GmailController, :disconnect
     post "/users/gmail/import/:id", GmailController, :import

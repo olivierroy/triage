@@ -91,6 +91,12 @@ defmodule TriageWeb.UserOAuthController do
     end
   end
 
+  def callback(conn, %{"provider" => "google"}) do
+    conn
+    |> put_flash(:error, "Authentication with Google was cancelled")
+    |> redirect(to: ~p"/users/log-in")
+  end
+
   defp handle_connect(conn, email, token) do
     scope = conn.assigns[:current_scope]
 
@@ -146,11 +152,6 @@ defmodule TriageWeb.UserOAuthController do
     end
   end
 
-  def callback(conn, %{"provider" => "google"}) do
-    conn
-    |> put_flash(:error, "Authentication with Google was cancelled")
-    |> redirect(to: ~p"/users/log-in")
-  end
 
   defp random_password do
     :crypto.strong_rand_bytes(16)

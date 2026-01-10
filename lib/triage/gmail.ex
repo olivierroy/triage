@@ -245,11 +245,14 @@ defmodule Triage.Gmail do
   end
 
   defp import_messages(email_account, messages) do
+    scope = Triage.Accounts.Scope.for_user(email_account.user_id)
+    categories = Triage.Categories.list_categories(scope)
+
     case get_valid_token(email_account) do
       {:ok, access_token} ->
         messages
         |> Task.async_stream(
-          &import_single_message(access_token, email_account, &1),
+          &import_single_message(access_token, email_account, &1, categories),
           max_concurrency: 5,
           timeout: :infinity
         )
@@ -264,11 +267,23 @@ defmodule Triage.Gmail do
     end
   end
 
-  defp import_single_message(access_token, email_account, %{"id" => message_id}) do
+  defp import_single_message(access_token, email_account, %{"id" => message_id}, categories) do
     with {:ok, gmail_message} <- Client.get_message(access_token, message_id),
-         {:ok, email} <- parse_gmail_message(gmail_message, email_account),
-         {:ok, _email} <- upsert_email(email) do
-      {:ok, email}
+         {:ok, email_attrs} <- parse_gmail_message(gmail_message, email_account) do
+      # Categorize and summarize using AI
+      email_attrs =
+        case Triage.Gmail.AI.categorize_and_summarize(email_attrs, categories) do
+          {:ok, ai_result} ->
+            Map.merge(email_attrs, ai_result)
+
+          {:error, _error} ->
+            email_attrs
+        end
+
+      case upsert_email(email_attrs) do
+        {:ok, email} -> {:ok, email}
+        error -> error
+      end
     else
       error -> error
     end
@@ -444,10 +459,20 @@ defmodule Triage.Gmail do
     )
   end
 
+  def count_emails_by_category(%Scope{user: %{id: user_id}}) do
+    Email
+    |> where([e], e.user_id == ^user_id)
+    |> group_by([e], e.category_id)
+    |> select([e], {e.category_id, count(e.id)})
+    |> Repo.all()
+    |> Map.new()
+  end
+
   def list_emails(%Scope{user: %{id: user_id}}, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
     offset = Keyword.get(opts, :offset, 0)
     category_id = Keyword.get(opts, :category_id)
+    has_category = Keyword.has_key?(opts, :category_id)
     email_account_id = Keyword.get(opts, :email_account_id)
 
     query =
@@ -458,10 +483,15 @@ defmodule Triage.Gmail do
       |> offset(^offset)
 
     query =
-      if category_id do
-        where(query, [e], e.category_id == ^category_id)
-      else
-        query
+      cond do
+        category_id ->
+          where(query, [e], e.category_id == ^category_id)
+
+        has_category and is_nil(category_id) ->
+          where(query, [e], is_nil(e.category_id))
+
+        true ->
+          query
       end
 
     query =
@@ -471,16 +501,80 @@ defmodule Triage.Gmail do
         query
       end
 
-    Repo.all(query)
+    query
+    |> Repo.all()
+    |> Repo.preload(:email_account)
+  end
+
+  def count_emails(%Scope{user: %{id: user_id}}, opts \\ []) do
+    category_id = Keyword.get(opts, :category_id)
+    has_category = Keyword.has_key?(opts, :category_id)
+    email_account_id = Keyword.get(opts, :email_account_id)
+
+    query =
+      Email
+      |> where([e], e.user_id == ^user_id)
+
+    query =
+      cond do
+        category_id ->
+          where(query, [e], e.category_id == ^category_id)
+
+        has_category and is_nil(category_id) ->
+          where(query, [e], is_nil(e.category_id))
+
+        true ->
+          query
+      end
+
+    query =
+      if email_account_id do
+        where(query, [e], e.email_account_id == ^email_account_id)
+      else
+        query
+      end
+
+    Repo.aggregate(query, :count, :id)
   end
 
   def get_email!(%Scope{user: %{id: user_id}}, id) do
     Repo.get_by!(Email, id: id, user_id: user_id)
   end
 
+  def delete_email(%Scope{} = scope, id, opts \\ []) do
+    email = get_email!(scope, id) |> Repo.preload(:email_account)
+
+    with {:ok, access_token} <- get_valid_token(email.email_account),
+         :ok <- Client.trash_message(access_token, email.gmail_message_id, opts) do
+      Repo.delete(email)
+    end
+  end
+
   def update_email_category(%Email{} = email, category_id) do
     email
     |> Email.update_category_changeset(%{category_id: category_id})
     |> Repo.update()
+  end
+
+  def reprocess_email(%Scope{} = scope, id) do
+    email = get_email!(scope, id)
+    categories = Triage.Categories.list_categories(scope)
+
+    # Convert email to attrs for AI service
+    email_attrs = %{
+      subject: email.subject,
+      from: email.from,
+      snippet: email.snippet
+    }
+
+    case Triage.Gmail.AI.categorize_and_summarize(email_attrs, categories) do
+      {:ok, ai_result} ->
+        email
+        |> Email.changeset(ai_result)
+        |> Repo.update()
+
+      {:error, error} ->
+        {:error, error}
+    end
   end
 end

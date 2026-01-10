@@ -7,10 +7,21 @@ defmodule Triage.GmailFixtures do
   alias Triage.Gmail
   alias Triage.Encryption
 
-  def unique_email, do: "email#{System.unique_integer()}@example.com"
+  alias Triage.Repo
+  alias Triage.Accounts.Scope
+  alias Triage.Emails.Email
 
-  def email_account_fixture(attrs \\ %{}) do
-    user_id = attrs[:user_id] || raise "user_id is required"
+  def unique_email, do: "email#{System.unique_integer([:positive])}@example.com"
+  def unique_message_id, do: "msg_#{System.unique_integer([:positive])}"
+
+  def email_account_fixture(scope_or_attrs \\ %{}, attrs \\ %{}) do
+    {user_id, attrs} =
+      case scope_or_attrs do
+        %Scope{user: %{id: user_id}} -> {user_id, attrs}
+        attrs when is_map(attrs) -> {attrs[:user_id], attrs}
+      end
+
+    if is_nil(user_id), do: raise "user_id is required"
 
     attrs =
       Enum.into(attrs, %{
@@ -35,5 +46,28 @@ defmodule Triage.GmailFixtures do
     # So providing encrypted tokens here is correct.
 
     email_account
+  end
+
+  def email_fixture(scope, account, attrs \\ %{}) do
+    attrs =
+      Enum.into(attrs, %{
+        user_id: scope.user.id,
+        email_account_id: account.id,
+        gmail_message_id: unique_message_id(),
+        thread_id: "thread_#{System.unique_integer([:positive])}",
+        subject: "Subject #{System.unique_integer([:positive])}",
+        from: unique_email(),
+        to: [unique_email()],
+        date: DateTime.utc_now() |> DateTime.truncate(:second),
+        snippet: "Snippet content...",
+        internal_date: DateTime.utc_now() |> DateTime.truncate(:second)
+      })
+
+    {:ok, email} =
+      %Email{}
+      |> Email.changeset(attrs)
+      |> Repo.insert()
+
+    email
   end
 end

@@ -13,7 +13,8 @@ defmodule TriageWeb.PageController do
         render(conn, :home_authenticated,
           current_scope: current_scope,
           connected_accounts: Gmail.list_email_accounts(current_scope),
-          categories: Categories.list_categories(current_scope)
+          categories: Categories.list_categories(current_scope),
+          email_counts: Gmail.count_emails_by_category(current_scope)
         )
     end
   end
