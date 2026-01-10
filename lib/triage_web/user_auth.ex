@@ -211,6 +211,28 @@ defmodule TriageWeb.UserAuth do
     end
   end
 
+  @doc """
+  Ensures the user is authenticated for LiveViews.
+
+  ## Usage
+
+      on_mount TriageWeb.UserAuth: :ensure_authenticated
+  """
+  def on_mount(:ensure_authenticated, _params, session, socket) do
+    if user_token = session["user_token"] do
+      case Accounts.get_user_by_session_token(user_token) do
+        {user, _token_inserted_at} ->
+          scope = Scope.for_user(user)
+          {:cont, Phoenix.Component.assign_new(socket, :current_scope, fn -> scope end)}
+
+        _ ->
+          {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/users/log-in")}
+      end
+    else
+      {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/users/log-in")}
+    end
+  end
+
   defp maybe_store_return_to(%{method: "GET"} = conn) do
     put_session(conn, :user_return_to, current_path(conn))
   end

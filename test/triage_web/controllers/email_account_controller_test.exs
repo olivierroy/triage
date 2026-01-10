@@ -26,9 +26,14 @@ defmodule TriageWeb.EmailAccountControllerTest do
 
   describe "update email account" do
     test "updates emails account settings and redirects", %{conn: conn, user: user} do
-      email_account = email_account_fixture(%{user_id: user.id, archive_emails: true, paused: false})
+      email_account =
+        email_account_fixture(%{user_id: user.id, archive_emails: true, paused: false})
 
-      conn = put(conn, ~p"/email_accounts/#{email_account}", email_account: %{archive_emails: "false", paused: "true"})
+      conn =
+        put(conn, ~p"/email_accounts/#{email_account}",
+          email_account: %{archive_emails: "false", paused: "true"}
+        )
+
       assert redirected_to(conn) == ~p"/email_accounts/#{email_account}/edit"
 
       scope = Triage.Accounts.Scope.for_user(user)

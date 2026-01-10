@@ -152,7 +152,6 @@ defmodule TriageWeb.UserOAuthController do
     end
   end
 
-
   defp random_password do
     :crypto.strong_rand_bytes(16)
     |> Base.encode64(padding: false)

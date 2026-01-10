@@ -3,7 +3,7 @@
     <header class="space-y-2">
       <p class="text-sm font-semibold uppercase tracking-[0.3em] text-sky-500">Home</p>
       <h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">
-        Welcome back, {@current_scope.user.email}
+        Welcome back, {presence(@current_scope.user.full_name) || @current_scope.user.email}
       </h1>
       <p class="text-slate-600">
         Keep your multi-inbox workflow organized. Connect every Gmail account, review the categories you already rely on, and spin up a new one whenever inspiration strikes.
@@ -158,7 +158,7 @@
             <p class="mt-2 text-sm text-slate-600">
               Emails that haven't been sorted into a specific category.
             </p>
-            <div class="mt-4 flex justify-end">
+            <div class="mt-4 flex items-center justify-between">
               <.link
                 href={~p"/emails?category_id=none"}
                 class="text-sm font-semibold text-sky-600 hover:text-sky-800"

@@ -1,0 +1,175 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <div class="mx-auto max-w-6xl">
+    <.header>
+      {@title}
+      <:subtitle>Review and manage your emails.</:subtitle>
+    </.header>
+
+    <div class="mt-8">
+      <%= if not @has_emails? do %>
+        <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-12 text-center">
+          <p class="text-base font-semibold text-slate-900">No emails found</p>
+        </div>
+      <% else %>
+        <div id="emails" phx-update="stream" class="space-y-6">
+          <%= for {id, email} <- @streams.emails do %>
+            <article
+              class="rounded-3xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/50 transition hover:shadow-slate-300/60"
+              id={id}
+            >
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 text-xs font-semibold text-sky-600">
+                    <span>{email.from}</span>
+                    <span class="text-slate-300">•</span>
+                    <span>{Calendar.strftime(email.date, "%b %d, %Y")}</span>
+                    <%= if email.category do %>
+                      <span class="text-slate-300">•</span>
+                      <span class="rounded-md bg-sky-50 px-2 py-0.5 text-sky-700 border border-sky-100">
+                        {email.category.name}
+                      </span>
+                    <% end %>
+                  </div>
+                  <h3 class="mt-1 text-lg font-semibold text-slate-900 truncate">
+                    <button
+                      type="button"
+                      phx-click="view_email"
+                      phx-value-id={email.id}
+                      class="hover:text-sky-600 transition-colors text-left"
+                    >
+                      {email.subject || "(No Subject)"}
+                    </button>
+                  </h3>
+                </div>
+                <div class="flex flex-col items-end gap-2 text-right">
+                  <div class="flex flex-wrap justify-end gap-2">
+                    <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 border border-slate-200">
+                      {email.email_account.email}
+                    </span>
+                  </div>
+                  <span class="text-[10px] text-slate-400">
+                    Imported: {Calendar.strftime(email.inserted_at, "%b %d, %H:%M")}
+                  </span>
+                  <div class="flex items-center gap-4">
+                    <button
+                      type="button"
+                      phx-click="reprocess"
+                      phx-value-id={email.id}
+                      class="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-800"
+                    >
+                      <.icon name="hero-sparkles" class="h-3 w-3" /> AI Reprocess
+                    </button>
+                    <button
+                      type="button"
+                      phx-click="delete"
+                      phx-value-id={email.id}
+                      data-confirm="Are you sure? This will delete the email from Gmail too."
+                      class="inline-flex items-center gap-1 text-xs font-semibold text-rose-500 hover:text-rose-700"
+                    >
+                      <.icon name="hero-trash" class="h-3 w-3" /> Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <p class="mt-2 text-sm text-slate-600 line-clamp-2">
+                {email.snippet}
+              </p>
+
+              <%= if email.summary do %>
+                <div class="mt-4 rounded-xl bg-slate-50 p-4 border border-slate-100">
+                  <p class="text-md text-slate-700 italic">{email.summary}</p>
+                </div>
+              <% end %>
+            </article>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="mt-8 flex items-center justify-between">
+      <div class="flex-1">
+        <%= if @page > 1 do %>
+          <.link
+            patch={~p"/emails?#{[category_id: @category_id, page: @page - 1]}"}
+            class="inline-flex items-center gap-1 text-sm font-semibold text-sky-600 hover:text-sky-800"
+          >
+            <.icon name="hero-chevron-left" class="h-4 w-4" /> Previous
+          </.link>
+        <% end %>
+      </div>
+
+      <div class="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        Page {@page} of {@total_pages}
+      </div>
+
+      <div class="flex-1 text-right">
+        <%= if @page < @total_pages do %>
+          <.link
+            patch={~p"/emails?#{[category_id: @category_id, page: @page + 1]}"}
+            class="inline-flex items-center gap-1 text-sm font-semibold text-sky-600 hover:text-sky-800"
+          >
+            Next <.icon name="hero-chevron-right" class="h-4 w-4" />
+          </.link>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="mt-8 text-center border-t border-slate-100 pt-8">
+      <.link navigate={~p"/"} class="text-sm font-semibold text-slate-600 hover:text-slate-900">
+        <.icon name="hero-arrow-left" class="size-3 inline-block align-middle mr-1" />
+        Back to dashboard
+      </.link>
+    </div>
+  </div>
+
+  <.modal
+    :if={@selected_email}
+    id="view-email-modal"
+    show
+    on_cancel={JS.push("close_email")}
+    max_width="max-w-6xl"
+  >
+    <div class="space-y-6">
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0 flex-1">
+          <h2 class="text-2xl font-bold text-slate-900 truncate">{@selected_email.subject || "(No Subject)"}</h2>
+          <div class="mt-2 flex flex-col gap-1 text-sm text-slate-500">
+            <p><span class="font-semibold text-slate-700">From:</span> {@selected_email.from}</p>
+            <p>
+              <span class="font-semibold text-slate-700">Date:</span>
+              {Calendar.strftime(@selected_email.date, "%b %d, %Y at %H:%M")}
+            </p>
+          </div>
+        </div>
+        <div class="flex-none pt-1">
+          <button
+            type="button"
+            phx-click="delete"
+            phx-value-id={@selected_email.id}
+            data-confirm="Are you sure? This will delete the email from Gmail too."
+            class="group inline-flex items-center justify-center rounded-xl border border-rose-100 bg-rose-50 p-2.5 text-rose-600 transition hover:bg-rose-100 hover:text-rose-700"
+            title="Delete Email"
+          >
+            <.icon name="hero-trash-solid" class="size-5" />
+          </button>
+        </div>
+      </div>
+
+      <div class="rounded-3xl border border-slate-100 bg-slate-50/50 p-1">
+        <%= if @selected_email.body_html do %>
+          <iframe
+            srcdoc={"<base target='_blank'>" <> @selected_email.body_html}
+            sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts"
+            class="w-full min-h-[600px] rounded-2xl bg-white"
+          >
+          </iframe>
+        <% else %>
+          <div class="bg-white rounded-2xl p-6 overflow-auto max-h-[600px]">
+            <pre class="whitespace-pre-wrap text-sm text-slate-700 font-sans">{@selected_email.body_text}</pre>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </.modal>
+</Layouts.app>

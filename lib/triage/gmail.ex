@@ -270,21 +270,58 @@ defmodule Triage.Gmail do
   defp import_single_message(access_token, email_account, %{"id" => message_id}, categories) do
     with {:ok, gmail_message} <- Client.get_message(access_token, message_id),
          {:ok, email_attrs} <- parse_gmail_message(gmail_message, email_account) do
-      # Categorize and summarize using AI
-      email_attrs =
-        case Triage.Gmail.AI.categorize_and_summarize(email_attrs, categories) do
-          {:ok, ai_result} ->
-            Map.merge(email_attrs, ai_result)
+      scope = Triage.Accounts.Scope.for_user(email_account.user_id)
 
-          {:error, _error} ->
-            email_attrs
-        end
+      case Triage.EmailRules.evaluate_email(scope, email_attrs) do
+        %{action: "skip"} ->
+          {:skip, :rule_matched}
 
-      case upsert_email(email_attrs) do
-        {:ok, email} -> {:ok, email}
-        error -> error
+        %{action: "process", archive: should_archive} ->
+          process_and_archive(email_attrs, categories, email_account, should_archive)
+
+        nil ->
+          process_and_archive(
+            email_attrs,
+            categories,
+            email_account,
+            email_account.archive_emails
+          )
       end
     else
+      error -> error
+    end
+  end
+
+  defp process_and_archive(email_attrs, categories, email_account, should_archive?) do
+    with {:ok, email} <- process_email(email_attrs, categories),
+         :ok <- maybe_archive_email(email, email_account, should_archive?) do
+      {:ok, email}
+    else
+      error -> error
+    end
+  end
+
+  defp maybe_archive_email(_email, _email_account, false), do: :ok
+
+  defp maybe_archive_email(%Email{} = email, %EmailAccount{} = email_account, true) do
+    case archive_message(email, email_account) do
+      {:ok, _} -> :ok
+      {:error, _error} -> :ok
+    end
+  end
+
+  defp process_email(email_attrs, categories) do
+    email_attrs =
+      case Triage.Gmail.AI.categorize_and_summarize(email_attrs, categories) do
+        {:ok, ai_result} ->
+          Map.merge(email_attrs, ai_result)
+
+        {:error, _error} ->
+          email_attrs
+      end
+
+    case upsert_email(email_attrs) do
+      {:ok, email} -> {:ok, email}
       error -> error
     end
   end
@@ -503,7 +540,7 @@ defmodule Triage.Gmail do
 
     query
     |> Repo.all()
-    |> Repo.preload(:email_account)
+    |> Repo.preload([:email_account, :category])
   end
 
   def count_emails(%Scope{user: %{id: user_id}}, opts \\ []) do
@@ -547,6 +584,14 @@ defmodule Triage.Gmail do
     with {:ok, access_token} <- get_valid_token(email.email_account),
          :ok <- Client.trash_message(access_token, email.gmail_message_id, opts) do
       Repo.delete(email)
+    end
+  end
+
+  def archive_message(%Email{} = email, %EmailAccount{} = email_account) do
+    with {:ok, access_token} <- get_valid_token(email_account) do
+      Client.modify_message(access_token, email.gmail_message_id, %{
+        removeLabelIds: ["INBOX"]
+      })
     end
   end
 

@@ -503,6 +503,100 @@ defmodule TriageWeb.CoreComponents do
     """
   end
 
+  @doc """
+  Renders a modal.
+
+  ## Examples
+
+      <.modal id="confirm-modal">
+        This is a modal.
+      </.modal>
+
+  JS commands may be passed to the `:on_cancel` to configure
+  the closing/canceling of the modal, for example:
+
+      <.modal id="confirm" on_cancel={JS.navigate(~p"/posts")}>
+        Is this ok?
+      </.modal>
+  """
+  attr :id, :string, required: true
+  attr :show, :boolean, default: false
+  attr :on_cancel, JS, default: %JS{}
+  attr :max_width, :string, default: "max-w-4xl"
+  slot :inner_block, required: true
+
+  def modal(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      phx-mounted={@show && show_modal(@id)}
+      phx-remove={hide_modal(@id)}
+      data-cancel={JS.exec(@on_cancel, "phx-remove")}
+      class="relative z-50 hidden"
+    >
+      <div id={"#{@id}-bg"} class="bg-slate-900/50 fixed inset-0 transition-opacity" aria-hidden="true" />
+      <div
+        class="fixed inset-0 overflow-y-auto"
+        aria-labelledby={"#{@id}-title"}
+        aria-describedby={"#{@id}-description"}
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
+      >
+        <div class="flex min-h-full items-center justify-center">
+          <div class={["w-full p-4 sm:p-6 lg:py-8", @max_width]}>
+            <.focus_wrap
+              id={"#{@id}-container"}
+              phx-window-keydown={JS.exec("data-cancel", to: "##{@id}")}
+              phx-key="escape"
+              phx-click-away={JS.exec("data-cancel", to: "##{@id}")}
+              class="relative rounded-3xl bg-white p-8 shadow-2xl shadow-slate-900/10 ring-1 ring-slate-900/5 transition"
+            >
+              <div class="absolute top-6 right-5">
+                <button
+                  phx-click={JS.exec("data-cancel", to: "##{@id}")}
+                  type="button"
+                  class="-m-3 flex-none p-3 opacity-20 hover:opacity-40"
+                  aria-label={gettext("close")}
+                >
+                  <.icon name="hero-x-mark-solid" class="size-5" />
+                </button>
+              </div>
+              <div id={"#{@id}-content"}>
+                {render_slot(@inner_block)}
+              </div>
+            </.focus_wrap>
+          </div>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  def show_modal(js \\ %JS{}, id) when is_binary(id) do
+    js
+    |> JS.show(to: "##{id}")
+    |> JS.show(
+      to: "##{id}-bg",
+      transition: {"transition-all transform ease-out duration-300", "opacity-0", "opacity-100"}
+    )
+    |> show("##{id}-container")
+    |> JS.add_class("overflow-hidden", to: "body")
+    |> JS.focus_first(to: "##{id}-content")
+  end
+
+  def hide_modal(js \\ %JS{}, id) do
+    js
+    |> JS.hide(
+      to: "##{id}-bg",
+      transition: {"transition-all transform ease-in duration-200", "opacity-100", "opacity-0"}
+    )
+    |> hide("##{id}-container")
+    |> JS.hide(to: "##{id}", transition: {"block", "block", "hidden"})
+    |> JS.remove_class("overflow-hidden", to: "body")
+    |> JS.pop_focus()
+  end
+
   ## JS Commands
 
   def show(js \\ %JS{}, selector) do
@@ -553,4 +647,29 @@ defmodule TriageWeb.CoreComponents do
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
   end
+
+  @doc """
+  Returns the value if present, otherwise returns nil.
+
+  A value is considered present if it's truthy and not a blank string.
+
+  ## Examples
+
+      iex> presence("hello")
+      "hello"
+
+      iex> presence(nil)
+      nil
+
+      iex> presence("")
+      nil
+
+      iex> presence("  ")
+      nil
+  """
+  def presence(nil), do: nil
+  def presence(""), do: nil
+  def presence("  "), do: nil
+  def presence(false), do: nil
+  def presence(value), do: value
 end

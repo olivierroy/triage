@@ -54,4 +54,58 @@ defmodule Triage.EmailRules do
   end
 
   defp set_owner(email_rule, _scope), do: email_rule
+
+  def evaluate_email(%Scope{user: %{id: _user_id}} = scope, email_attrs) do
+    rules = list_email_rules(scope)
+
+    Enum.find_value(rules, fn rule ->
+      if matches_rule?(rule, email_attrs) do
+        %{action: rule.action, archive: rule.archive}
+      end
+    end)
+  end
+
+  def evaluate_email(_scope, _email_attrs), do: nil
+
+  defp matches_rule?(%EmailRule{} = rule, email_attrs) do
+    matches_sender?(rule, email_attrs) or
+      matches_subject?(rule, email_attrs) or
+      matches_body?(rule, email_attrs)
+  end
+
+  defp matches_sender?(%EmailRule{match_senders: senders}, _email_attrs)
+       when senders == [],
+       do: false
+
+  defp matches_sender?(%EmailRule{match_senders: senders}, %{from: from}) do
+    Enum.any?(senders, fn sender ->
+      from =~ sender
+    end)
+  end
+
+  defp matches_subject?(%EmailRule{match_subject_keywords: keywords}, _email_attrs)
+       when keywords == [],
+       do: false
+
+  defp matches_subject?(%EmailRule{match_subject_keywords: keywords}, %{subject: subject}) do
+    email_text = String.downcase(subject || "")
+
+    Enum.any?(keywords, fn keyword ->
+      String.contains?(email_text, String.downcase(keyword))
+    end)
+  end
+
+  defp matches_body?(%EmailRule{match_body_keywords: keywords}, _email_attrs)
+       when keywords == [],
+       do: false
+
+  defp matches_body?(%EmailRule{match_body_keywords: keywords}, email_attrs) do
+    body_text = email_attrs.body_text || email_attrs.snippet || ""
+
+    email_text = String.downcase(body_text)
+
+    Enum.any?(keywords, fn keyword ->
+      String.contains?(email_text, String.downcase(keyword))
+    end)
+  end
 end

@@ -8,7 +8,7 @@ defmodule Triage.Gmail.AI do
   alias LangChain.Message
   alias LangChain.Function
 
-  @model "gemini-2.5-flash"
+  @models ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
 
   def categorize_and_summarize(email_attrs, categories) do
     # Define the structured output function
@@ -22,7 +22,8 @@ defmodule Triage.Gmail.AI do
           properties: %{
             category_id: %{
               type: "string",
-              description: "The ID of the category that best fits the email. Use 'none' if no category fits well.",
+              description:
+                "The ID of the category that best fits the email. Use 'none' if no category fits well.",
               enum: Enum.map(categories, &to_string(&1.id)) ++ ["none"]
             },
             summary: %{
@@ -49,9 +50,9 @@ defmodule Triage.Gmail.AI do
     Instructions:
     1. Read the email subject and snippet carefully.
     2. Choose the best matching category from the list above. If none fit well, use 'none'.
-    3. Provide a very concise summary (1-2 sentences) that highlights the most important action item or information.
-    4. You may think through your reasoning, but you MUST call the `save_categorization` function as your final act.
-    5. MANDATORY: Your output MUST contain a call to `save_categorization`. Do not just provide text.
+    3. Provide a very concise summary (2-4 sentences) that highlights the most important action item or information. Do not start with "This email is about...", just provide the summary directly.
+    4. You MUST call the `save_categorization` function as your final act.
+    5. CRITICAL: Use the provided tool call mechanism (`save_categorization`). Do NOT wrap your output in code blocks, do NOT write Python code, and do NOT use "tool_code". Just call the function directly.
     """
 
     user_prompt = """
@@ -62,12 +63,17 @@ defmodule Triage.Gmail.AI do
 
     require Logger
 
+    # Select a random model to efficiently use free tier
+    selected_model = Enum.random(@models)
+    Logger.info("Using AI model: #{selected_model}")
+
     # Run the chain
-    model = ChatGoogleAI.new!(%{
-      model: @model,
-      api_key: System.get_env("GOOGLE_API_KEY"),
-      temperature: 0
-    })
+    model =
+      ChatGoogleAI.new!(%{
+        model: selected_model,
+        api_key: System.get_env("GOOGLE_API_KEY"),
+        temperature: 0
+      })
 
     case LLMChain.new!(%{llm: model})
          |> LLMChain.add_tools(categorize_fn)
@@ -92,19 +98,60 @@ defmodule Triage.Gmail.AI do
                 json when is_binary(json) -> Jason.decode!(json)
               end
 
-            {:ok, %{
-              category_id: if(result["category_id"] == "none", do: nil, else: result["category_id"]),
-              summary: result["summary"]
-            }}
+            {:ok,
+             %{
+               category_id:
+                 if(result["category_id"] == "none", do: nil, else: result["category_id"]),
+               summary: result["summary"]
+             }}
 
-          _ ->
-            Logger.error("AI failed to call tool. Last message: #{inspect(List.last(updated_chain.messages))}")
-            {:error, "AI failed to categorize the email correctly"}
+          nil ->
+            # Fallback: Try to parse if the model returned "tool_code" or text with the function call
+            last_message = List.last(updated_chain.messages)
+
+            case parse_fallback_content(last_message.content) do
+              {:ok, result} ->
+                {:ok,
+                 %{
+                   category_id:
+                     if(result["category_id"] == "none", do: nil, else: result["category_id"]),
+                   summary: result["summary"]
+                 }}
+
+              _ ->
+                Logger.error("AI failed to call tool. Last message: #{inspect(last_message)}")
+                {:error, "AI failed to categorize the email correctly"}
+            end
         end
 
       {:error, _chain, error} ->
         Logger.error("AI Error: #{inspect(error)}")
         {:error, "AI service error: #{inspect(error)}"}
+    end
+  end
+
+  defp parse_fallback_content(content) when is_list(content) do
+    content
+    |> Enum.find_value(fn
+      %LangChain.Message.ContentPart{type: :text, content: text} -> parse_text_fallback(text)
+      _ -> nil
+    end)
+  end
+
+  defp parse_fallback_content(_), do: nil
+
+  defp parse_text_fallback(text) do
+    # Regex to match save_categorization(category_id='...', summary='...')
+    # Handles both single and double quotes
+    cat_match = Regex.run(~r/category_id=['"]([^'"]+)['"]/, text)
+    sum_match = Regex.run(~r/summary=['"]([^'"]+)['"]/, text)
+
+    case {cat_match, sum_match} do
+      {[_, cat_id], [_, summary]} ->
+        {:ok, %{"category_id" => cat_id, "summary" => summary}}
+
+      _ ->
+        nil
     end
   end
 end

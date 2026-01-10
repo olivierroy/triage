@@ -133,7 +133,10 @@ defmodule Triage.Gmail.Client do
         :ok
 
       {:ok, %{status: status, body: body}} ->
-        Logger.error("Failed to delete Gmail message #{message_id}: Status #{status}, Body: #{inspect(body)}")
+        Logger.error(
+          "Failed to delete Gmail message #{message_id}: Status #{status}, Body: #{inspect(body)}"
+        )
+
         {:error, :api_error}
 
       {:error, reason} ->
@@ -152,7 +155,10 @@ defmodule Triage.Gmail.Client do
         :ok
 
       {:ok, %{status: status, body: body}} ->
-        Logger.error("Failed to trash Gmail message #{message_id}: Status #{status}, Body: #{inspect(body)}")
+        Logger.error(
+          "Failed to trash Gmail message #{message_id}: Status #{status}, Body: #{inspect(body)}"
+        )
+
         {:error, :api_error}
 
       {:error, reason} ->
@@ -179,6 +185,7 @@ defmodule Triage.Gmail.Client do
       {"Authorization", "Bearer #{access_token}"},
       {"Content-Type", "application/json"}
     ]
+
     {req_opts, _adapter_opts} = Keyword.split(opts, [:params, :json, :body, :headers, :plug])
     merged_headers = headers ++ (req_opts[:headers] || [])
 

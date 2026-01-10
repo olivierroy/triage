@@ -21,7 +21,7 @@ defmodule Triage.GmailFixtures do
         attrs when is_map(attrs) -> {attrs[:user_id], attrs}
       end
 
-    if is_nil(user_id), do: raise "user_id is required"
+    if is_nil(user_id), do: raise("user_id is required")
 
     attrs =
       Enum.into(attrs, %{

@@ -23,7 +23,11 @@
             account.paused && "bg-amber-100 text-amber-700",
             !account.paused && "bg-emerald-100 text-emerald-700"
           ]}>
-            <span class={["h-2 w-2 rounded-full", account.paused && "bg-amber-400", !account.paused && "bg-emerald-400"]} />
+            <span class={[
+              "h-2 w-2 rounded-full",
+              account.paused && "bg-amber-400",
+              !account.paused && "bg-emerald-400"
+            ]} />
             {if account.paused, do: "Paused", else: "Active"}
           </span>
         </:col>
@@ -38,12 +42,19 @@
           <% end %>
         </:col>
         <:action :let={account}>
-          <.link href={~p"/users/gmail/import/#{account}"} method="post" class="text-emerald-600 hover:text-emerald-800">
+          <.link
+            href={~p"/users/gmail/import/#{account}"}
+            method="post"
+            class="text-emerald-600 hover:text-emerald-800"
+          >
             <.icon name="hero-arrow-path" class="h-4 w-4" />
           </.link>
         </:action>
         <:action :let={account}>
-          <.link navigate={~p"/email_accounts/#{account}/edit"} class="text-sky-600 hover:text-sky-800">
+          <.link
+            navigate={~p"/email_accounts/#{account}/edit"}
+            class="text-sky-600 hover:text-sky-800"
+          >
             <.icon name="hero-pencil-square" class="h-4 w-4" />
           </.link>
         </:action>
@@ -52,7 +63,8 @@
 
     <div class="mt-8 text-center">
       <.link navigate={~p"/"} class="text-sm font-semibold text-slate-600 hover:text-slate-900">
-        <.icon name="hero-arrow-left" class="size-3 inline-block align-middle mr-1" /> Back to dashboard
+        <.icon name="hero-arrow-left" class="size-3 inline-block align-middle mr-1" />
+        Back to dashboard
       </.link>
     </div>
   </div>
