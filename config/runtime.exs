@@ -57,6 +57,16 @@ if config_env() == :prod do
 
   config :triage, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  config :triage, :encryption,
+    secret_key:
+      System.get_env("ENCRYPTION_KEY") ||
+        raise("""
+        environment variable ENCRYPTION_KEY is missing.
+        Generate one with: openssl rand -base64 32
+        """)
+
+  config :triage, :google, redirect_uri: "https://#{host}/users/gmail/callback"
+
   config :triage, TriageWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
@@ -117,4 +127,12 @@ if config_env() == :prod do
   #     config :swoosh, :api_client, Swoosh.ApiClient.Req
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
+  config :triage, Triage.Mailer,
+    adapter: Swoosh.Adapters.SMTP,
+    relay: System.get_env("SMTP_RELAY"),
+    username: System.get_env("SMTP_USERNAME"),
+    password: System.get_env("SMTP_PASSWORD"),
+    tls: :always,
+    auth: :always,
+    port: 465
 end

@@ -31,7 +31,7 @@
 
           <div class="flex flex-col gap-4 sm:flex-row">
             <.link
-              href="/auth/google"
+              href={~p"/users/oauth/google/request"}
               class="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 px-8 py-3 text-base font-semibold text-white shadow-lg shadow-sky-500/40 transition hover:-translate-y-0.5"
             >
               <.icon name="hero-inbox-arrow-down" class="h-5 w-5" /> Sign in with Google
@@ -319,7 +319,7 @@
         </div>
         <div class="flex flex-col gap-4 sm:flex-row">
           <.link
-            href="/auth/google"
+            href={~p"/users/oauth/google/request"}
             class="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-8 py-3 text-base font-semibold text-slate-900 shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5"
           >
             <.icon name="hero-arrow-right" class="h-5 w-5" /> Get started free

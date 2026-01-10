@@ -12,6 +12,8 @@ defmodule Triage.Application do
       Triage.Repo,
       {DNSCluster, query: Application.get_env(:triage, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Triage.PubSub},
+      Triage.Gmail.TokenManager,
+      {Oban, Application.get_env(:triage, Oban)},
       # Start a worker by calling: Triage.Worker.start_link(arg)
       # {Triage.Worker, arg},
       # Start to serve requests, typically the last entry

@@ -65,24 +65,24 @@ defmodule TriageWeb.Router do
 
     get "/users/settings", UserSettingsController, :edit
     put "/users/settings", UserSettingsController, :update
+    delete "/users/settings", UserSettingsController, :delete
     get "/users/settings/confirm-email/:token", UserSettingsController, :confirm_email
     resources "/categories", CategoryController, only: [:new, :create, :edit, :update]
     resources "/email_rules", EmailRuleController, except: [:show]
+    resources "/email_accounts", EmailAccountController, only: [:index, :edit, :update]
+
+    post "/users/gmail/disconnect/:id", GmailController, :disconnect
+    post "/users/gmail/import/:id", GmailController, :import
   end
 
   scope "/", TriageWeb do
     pipe_through [:browser]
 
+    get "/users/oauth/:provider/request", UserOAuthController, :request
+    get "/users/oauth/:provider/callback", UserOAuthController, :callback
     get "/users/log-in", UserSessionController, :new
     get "/users/log-in/:token", UserSessionController, :confirm
     post "/users/log-in", UserSessionController, :create
     delete "/users/log-out", UserSessionController, :delete
-  end
-
-  scope "/", TriageWeb do
-    pipe_through [:browser, :redirect_if_user_is_authenticated]
-
-    get "/users/oauth/:provider/request", UserOAuthController, :request
-    get "/users/oauth/:provider/callback", UserOAuthController, :callback
   end
 end

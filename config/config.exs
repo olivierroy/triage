@@ -82,7 +82,24 @@ config :new_relic_agent,
 # Google OAuth configuration
 config :triage, :google,
   client_id: System.get_env("GOOGLE_CLIENT_ID", ""),
-  client_secret: System.get_env("GOOGLE_CLIENT_SECRET", "")
+  client_secret: System.get_env("GOOGLE_CLIENT_SECRET", ""),
+  redirect_uri: "http://localhost:4000/users/gmail/callback"
+
+# Encryption configuration
+config :triage, Triage.Vault, []
+
+# Oban configuration
+config :triage, Oban,
+  repo: Triage.Repo,
+  queues: [default: 10, gmail_import: 5, gmail_sync: 2],
+  plugins: [
+    Oban.Plugins.Pruner,
+    Oban.Plugins.Lifeline,
+    Oban.Plugins.Reindexer
+  ],
+  crontab: [
+    {"* * * * *", Triage.Gmail.SyncWorker, args: %{}}
+  ]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

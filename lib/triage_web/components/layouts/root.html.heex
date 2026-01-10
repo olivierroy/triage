@@ -35,6 +35,12 @@
               Home
             </.link>
             <.link
+              href={~p"/email_accounts"}
+              class="transition hover:text-slate-900"
+            >
+              Accounts
+            </.link>
+            <.link
               href={~p"/email_rules"}
               class="transition hover:text-slate-900"
             >
@@ -46,7 +52,6 @@
             <a href="/#workflow" class="transition hover:text-slate-900">Workflow</a>
           <% end %>
         </div>
-
 
         <div class="flex items-center gap-3">
           <%= if @current_scope do %>

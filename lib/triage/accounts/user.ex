@@ -30,6 +30,15 @@ defmodule Triage.Accounts.User do
     |> validate_email(opts)
   end
 
+  @doc """
+  A user changeset for changing the profile information.
+  """
+  def profile_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:full_name])
+    |> validate_required([:full_name])
+  end
+
   defp validate_email(changeset, opts) do
     changeset =
       changeset

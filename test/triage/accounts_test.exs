@@ -252,6 +252,17 @@ defmodule Triage.AccountsTest do
     end
   end
 
+  describe "delete_user/1" do
+    test "deletes the user and all their tokens" do
+      user = user_fixture()
+      token = Accounts.generate_user_session_token(user)
+
+      assert {:ok, %User{}} = Accounts.delete_user(user)
+      refute Repo.get(User, user.id)
+      refute Accounts.get_user_by_session_token(token)
+    end
+  end
+
   describe "generate_user_session_token/1" do
     setup do
       %{user: user_fixture()}

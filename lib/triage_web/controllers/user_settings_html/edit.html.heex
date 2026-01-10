@@ -6,6 +6,16 @@
     </.header>
   </div>
 
+  <.form :let={f} for={@profile_changeset} action={~p"/users/settings"} id="update_profile">
+    <input type="hidden" name="action" value="update_profile" />
+
+    <.input field={f[:full_name]} type="text" label="Full Name" required />
+
+    <.button variant="primary" phx-disable-with="Saving...">Save Profile</.button>
+  </.form>
+
+  <.divider />
+
   <.form :let={f} for={@email_changeset} action={~p"/users/settings"} id="update_email">
     <input type="hidden" name="action" value="update_email" />
 
@@ -37,4 +47,37 @@
       Save Password
     </.button>
   </.form>
+
+  <.divider />
+
+  <section class="mt-10 rounded-3xl border border-rose-200/80 bg-rose-50/70 p-6 shadow-xl shadow-rose-100">
+    <div class="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+      <div class="text-left">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-rose-500">Danger zone</p>
+        <h2 class="mt-2 text-2xl font-semibold text-slate-900">Delete account</h2>
+        <p class="mt-1 max-w-xl text-sm leading-relaxed text-slate-600">
+          Permanently erase your account, categories, and rules from Triage. This action cannot be undone,
+          so please make sure you have exported anything important before proceeding.
+        </p>
+      </div>
+
+      <.form
+        for={@delete_account_form}
+        action={~p"/users/settings"}
+        method="post"
+        id="delete-account-form"
+        class="flex items-center justify-end"
+      >
+        <input type="hidden" name="_method" value="delete" />
+
+        <.button
+          variant="danger"
+          type="submit"
+          data-confirm="This will permanently delete your account. Continue?"
+        >
+          <.icon name="hero-trash" class="h-4 w-4" /> Delete account
+        </.button>
+      </.form>
+    </div>
+  </section>
 </Layouts.app>

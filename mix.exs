@@ -59,6 +59,7 @@ defmodule Triage.MixProject do
        compile: false,
        depth: 1},
       {:swoosh, "~> 1.16"},
+      {:gen_smtp, "~> 1.3"},
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
@@ -69,7 +70,9 @@ defmodule Triage.MixProject do
       {:new_relic_agent, "~> 1.0"},
       {:langchain, "0.4.1"},
       {:assent, "~> 0.2"},
-      {:pbkdf2_elixir, "~> 2.0"}
+      {:pbkdf2_elixir, "~> 2.0"},
+      {:cloak, "~> 1.1"},
+      {:oban, "~> 2.17"}
     ]
   end
 

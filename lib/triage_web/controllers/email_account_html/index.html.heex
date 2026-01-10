@@ -1,0 +1,50 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <div class="mx-auto max-w-6xl">
+    <.header>
+      Connected Email Accounts
+      <:subtitle>Manage settings for all your connected Gmail accounts.</:subtitle>
+      <:actions>
+        <.link
+          href={~p"/users/oauth/google/request"}
+          class="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-500 to-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/40 transition hover:-translate-y-0.5"
+        >
+          <.icon name="hero-plus-circle" class="h-4 w-4" /> Connect New Account
+        </.link>
+      </:actions>
+    </.header>
+
+    <div class="mt-8">
+      <.table id="email_accounts" rows={@email_accounts}>
+        <:col :let={account} label="Email">{account.email}</:col>
+        <:col :let={account} label="Provider">{String.capitalize(account.provider)}</:col>
+        <:col :let={account} label="Status">
+          <span class={[
+            "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold",
+            account.paused && "bg-amber-100 text-amber-700",
+            !account.paused && "bg-emerald-100 text-emerald-700"
+          ]}>
+            <span class={["h-2 w-2 rounded-full", account.paused && "bg-amber-400", !account.paused && "bg-emerald-400"]} />
+            {if account.paused, do: "Paused", else: "Active"}
+          </span>
+        </:col>
+        <:col :let={account} label="Auto Archive">
+          {if account.archive_emails, do: "Yes", else: "No"}
+        </:col>
+        <:action :let={account}>
+          <div class="sr-only">
+            <.link navigate={~p"/email_accounts/#{account}/edit"}>Edit</.link>
+          </div>
+          <.link navigate={~p"/email_accounts/#{account}/edit"} class="text-sky-600 hover:text-sky-800">
+            <.icon name="hero-pencil-square" class="h-4 w-4" />
+          </.link>
+        </:action>
+      </.table>
+    </div>
+
+    <div class="mt-8 text-center">
+      <.link navigate={~p"/"} class="text-sm font-semibold text-slate-600 hover:text-slate-900">
+        <.icon name="hero-arrow-left" class="size-3 inline-block align-middle mr-1" /> Back to dashboard
+      </.link>
+    </div>
+  </div>
+</Layouts.app>

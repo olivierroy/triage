@@ -1,0 +1,26 @@
+<Layouts.app flash={@flash} current_scope={@current_scope}>
+  <div class="mx-auto max-w-2xl">
+    <div class="text-center">
+      <.header>
+        Edit {@email_account.email} Settings
+        <:subtitle>Manage settings for this account.</:subtitle>
+      </.header>
+    </div>
+
+    <.form :let={f} for={@changeset} action={~p"/email_accounts/#{@email_account}"} class="mt-10 space-y-8 bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-100">
+      <.error :if={@changeset.action}>
+        Oops, something went wrong! Please check the errors below.
+      </.error>
+
+      <.input field={f[:archive_emails]} type="checkbox" label="Auto Archive Emails" />
+      <.input field={f[:paused]} type="checkbox" label="Paused" />
+
+      <div class="flex items-center gap-4">
+        <.button variant="primary">Save Settings</.button>
+        <.link navigate={~p"/email_accounts"} class="text-sm font-semibold text-slate-600 hover:text-slate-900">
+          Back to Accounts
+        </.link>
+      </div>
+    </.form>
+  </div>
+</Layouts.app>

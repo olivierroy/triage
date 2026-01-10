@@ -92,13 +92,15 @@ defmodule TriageWeb.CoreComponents do
   """
   attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
   attr :class, :any
-  attr :variant, :string, values: ~w(primary)
+  attr :variant, :string, values: ~w(primary danger)
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
     variants = %{
       "primary" =>
         "bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-lg shadow-sky-500/30 hover:-translate-y-0.5 focus-visible:outline-sky-500",
+      "danger" =>
+        "bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-lg shadow-rose-500/30 hover:-translate-y-0.5 focus-visible:outline-red-500",
       nil =>
         "border border-slate-200 bg-white/90 text-slate-900 shadow-sm hover:border-slate-300 hover:bg-white focus-visible:outline-slate-400"
     }
@@ -317,7 +319,7 @@ defmodule TriageWeb.CoreComponents do
   end
 
   # Helper used by inputs to generate form errors
-  defp error(assigns) do
+  def error(assigns) do
     ~H"""
     <p class="mt-1.5 flex items-center gap-2 text-sm font-medium text-rose-600">
       <.icon name="hero-exclamation-circle" class="size-5" />

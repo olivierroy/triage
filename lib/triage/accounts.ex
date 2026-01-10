@@ -148,6 +148,37 @@ defmodule Triage.Accounts do
   end
 
   @doc """
+  Returns an `%Ecto.Changeset{}` for changing the user profile.
+
+  ## Examples
+
+      iex> change_user_profile(user)
+      %Ecto.Changeset{data: %User{}}
+
+  """
+  def change_user_profile(user, attrs \\ %{}) do
+    User.profile_changeset(user, attrs)
+  end
+
+  @doc """
+  Updates the user profile.
+
+  ## Examples
+
+      iex> update_user_profile(user, %{full_name: "New Name"})
+      {:ok, %User{}}
+
+      iex> update_user_profile(user, %{full_name: ""})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_user_profile(user, attrs) do
+    user
+    |> User.profile_changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
   Updates the user password.
 
   Returns a tuple with the updated user, as well as a list of expired tokens.
@@ -165,6 +196,13 @@ defmodule Triage.Accounts do
     user
     |> User.password_changeset(attrs)
     |> update_user_and_delete_all_tokens()
+  end
+
+  @doc """
+  Deletes the given user and cascades all related records.
+  """
+  def delete_user(%User{} = user) do
+    Repo.delete(user)
   end
 
   ## Session

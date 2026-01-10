@@ -145,4 +145,17 @@ defmodule TriageWeb.UserSettingsControllerTest do
       assert redirected_to(conn) == ~p"/users/log-in"
     end
   end
+
+  describe "DELETE /users/settings" do
+    test "deletes the account and logs the user out", %{conn: conn, user: user} do
+      conn = delete(conn, ~p"/users/settings")
+
+      assert redirected_to(conn) == ~p"/"
+
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) =~
+               "account was deleted"
+
+      refute Accounts.get_user_by_email(user.email)
+    end
+  end
 end

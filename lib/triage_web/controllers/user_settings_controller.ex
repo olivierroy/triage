@@ -4,6 +4,7 @@ defmodule TriageWeb.UserSettingsController do
   alias Triage.Accounts
   alias TriageWeb.UserAuth
 
+  import Phoenix.Component, only: [to_form: 2]
   import TriageWeb.UserAuth, only: [require_sudo_mode: 2]
 
   plug :require_sudo_mode
@@ -11,6 +12,21 @@ defmodule TriageWeb.UserSettingsController do
 
   def edit(conn, _params) do
     render(conn, :edit)
+  end
+
+  def update(conn, %{"action" => "update_profile"} = params) do
+    %{"user" => user_params} = params
+    user = conn.assigns.current_scope.user
+
+    case Accounts.update_user_profile(user, user_params) do
+      {:ok, _user} ->
+        conn
+        |> put_flash(:info, "Profile updated successfully.")
+        |> redirect(to: ~p"/users/settings")
+
+      {:error, changeset} ->
+        render(conn, :edit, profile_changeset: changeset)
+    end
   end
 
   def update(conn, %{"action" => "update_email"} = params) do
@@ -67,11 +83,29 @@ defmodule TriageWeb.UserSettingsController do
     end
   end
 
+  def delete(conn, _params) do
+    user = conn.assigns.current_scope.user
+
+    case Accounts.delete_user(user) do
+      {:ok, _} ->
+        conn
+        |> put_flash(:info, "Your account was deleted. We're sorry to see you go.")
+        |> UserAuth.log_out_user()
+
+      {:error, _changeset} ->
+        conn
+        |> put_flash(:error, "We couldn't delete your account right now. Please try again.")
+        |> redirect(to: ~p"/users/settings")
+    end
+  end
+
   defp assign_email_and_password_changesets(conn, _opts) do
     user = conn.assigns.current_scope.user
 
     conn
     |> assign(:email_changeset, Accounts.change_user_email(user))
     |> assign(:password_changeset, Accounts.change_user_password(user))
+    |> assign(:profile_changeset, Accounts.change_user_profile(user))
+    |> assign(:delete_account_form, to_form(%{}, as: :delete_account))
   end
 end
