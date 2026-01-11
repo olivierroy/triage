@@ -90,3 +90,10 @@ config :phoenix_live_view,
 
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
+
+# Playwright MCP server URL for development
+# When running with Docker Compose, service name is used
+# When running locally, you can use localhost
+# LangChain MCP handles MCP path automatically
+config :triage,
+  playwright_mcp_url: System.get_env("PLAYWRIGHT_MCP_URL", "http://localhost:8931")

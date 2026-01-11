@@ -78,6 +78,9 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
+  config :triage,
+    playwright_mcp_url: System.get_env("PLAYWRIGHT_MCP_URL", "http://playwright-mcp:8931")
+
   # ## SSL Support
   #
   # To get SSL working, you will need to add the `https` key

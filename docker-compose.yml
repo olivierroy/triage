@@ -16,11 +16,39 @@ services:
       timeout: 5s
       retries: 5
 
+  playwright-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright
+    platform: linux/amd64
+    container_name: playwright-mcp
+    ports:
+      - "127.0.0.1:8931:8931"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    shm_size: '2gb'
+    security_opt:
+      - seccomp:unconfined
+    mem_limit: 4g
+    mem_reservation: 2g
+    volumes:
+      - playwright-cache:/ms-playwright
+    healthcheck:
+      test: ["CMD-SHELL", "curl http://localhost:8931/mcp || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+    labels:
+      - "coolify.preserve=true"
+
   app:
     build:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    # avoid port conflict on Coolify
     # ports:
     #   - "${PORT:-4000}:4000"
     expose:
@@ -44,6 +72,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      playwright-mcp:
+        condition: service_healthy
+
     command: >
       sh -c "/app/bin/triage eval 'Triage.Release.migrate' && /app/bin/server"
     healthcheck:
@@ -55,3 +86,4 @@ services:
 
 volumes:
   postgres_data:
+  playwright-cache:

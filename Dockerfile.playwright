@@ -1,0 +1,7 @@
+FROM mcr.microsoft.com/playwright:v1.48.0-jammy
+
+# Install required browsers once during image build
+RUN npx playwright install chrome
+
+# Set the command
+CMD ["npx", "@playwright/mcp@latest", "--headless", "--no-sandbox", "--isolated", "--host", "0.0.0.0", "--port", "8931", "--allowed-hosts", "*"]

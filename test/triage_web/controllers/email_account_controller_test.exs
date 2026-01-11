@@ -20,7 +20,7 @@ defmodule TriageWeb.EmailAccountControllerTest do
       conn = get(conn, ~p"/email_accounts/#{email_account}/edit")
       assert html_response(conn, 200) =~ "Edit #{email_account.email} Settings"
       assert html_response(conn, 200) =~ "Auto Archive Emails"
-      assert html_response(conn, 200) =~ "Paused"
+      assert html_response(conn, 200) =~ "Pause"
     end
   end
 

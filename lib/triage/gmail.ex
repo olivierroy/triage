@@ -3,6 +3,7 @@ defmodule Triage.Gmail do
   Main context module for Gmail integration.
   """
 
+  require Logger
   import Ecto.Query, warn: false
 
   alias Triage.Accounts.{GoogleOAuth, Scope}
@@ -86,6 +87,10 @@ defmodule Triage.Gmail do
   end
 
   def list_email_accounts(_), do: []
+
+  def get_email_account_by_user_and_email(user_id, provider, email) do
+    Repo.get_by(EmailAccount, user_id: user_id, provider: provider, email: email)
+  end
 
   def get_email_account!(%Scope{user: %{id: user_id}}, id) do
     Repo.get_by!(EmailAccount, id: id, user_id: user_id)
@@ -250,10 +255,28 @@ defmodule Triage.Gmail do
   defp import_messages(email_account, messages) do
     scope = %Triage.Accounts.Scope{user: %Triage.Accounts.User{id: email_account.user_id}}
     categories = Triage.Categories.list_categories(scope)
+    message_ids = extract_message_ids(messages)
+    existing_ids = existing_gmail_ids(email_account, message_ids)
+
+    {messages_to_process, skipped_count} =
+      Enum.reduce(messages, {[], 0}, fn message, {acc, skipped} ->
+        case MapSet.member?(existing_ids, message["id"]) do
+          true -> {acc, skipped + 1}
+          false -> {[message | acc], skipped}
+        end
+      end)
+
+    messages_to_process = Enum.reverse(messages_to_process)
+
+    if skipped_count > 0 do
+      Logger.debug(
+        "Skipping #{skipped_count} Gmail messages for account #{email_account.id}; already imported"
+      )
+    end
 
     case get_valid_token(email_account) do
       {:ok, access_token} ->
-        messages
+        messages_to_process
         |> Task.async_stream(
           &import_single_message(access_token, email_account, &1, categories),
           max_concurrency: 5,
@@ -476,6 +499,28 @@ defmodule Triage.Gmail do
     |> Enum.reject(&(&1 == ""))
   end
 
+  defp extract_message_ids(messages) do
+    messages
+    |> Enum.map(& &1["id"])
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp existing_gmail_ids(_email_account, []) do
+    MapSet.new()
+  end
+
+  defp existing_gmail_ids(%EmailAccount{} = email_account, message_ids)
+       when is_list(message_ids) do
+    from(e in Email,
+      where:
+        e.email_account_id == ^email_account.id and
+          e.gmail_message_id in ^message_ids,
+      select: e.gmail_message_id
+    )
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
   defp upsert_email(attrs) do
     changeset = Email.changeset(%Email{}, attrs)
 
@@ -518,7 +563,12 @@ defmodule Triage.Gmail do
     query =
       Email
       |> where([e], e.user_id == ^user_id)
-      |> order_by([e], desc: e.date)
+      |> order_by(
+        [
+          e
+        ],
+        desc: fragment("COALESCE(?, ?, ?)", e.date, e.internal_date, e.inserted_at)
+      )
       |> limit(^limit)
       |> offset(^offset)
 
@@ -628,6 +678,73 @@ defmodule Triage.Gmail do
 
       {:error, error} ->
         {:error, error}
+    end
+  end
+
+  def unsubscribe_email(%Scope{} = scope, id) do
+    email = get_email!(scope, id) |> Repo.preload(:email_account)
+
+    email_attrs = %{
+      subject: email.subject,
+      from: email.from,
+      body_html: email.body_html,
+      body_text: email.body_text,
+      receiver_email: email.email_account.email
+    }
+
+    case ai_service().unsubscribe_from_email(email_attrs) do
+      {:ok, %{status: :success} = result} ->
+        persist_unsubscribe_attempt(scope, email, result)
+        {:ok, result.message}
+
+      {:ok, %{status: :failed} = result} ->
+        persist_unsubscribe_attempt(scope, email, result)
+        {:error, result.message}
+
+      {:ok, %{status: :not_found, message: message}} ->
+        {:error, message}
+
+      {:ok, %{status: other, message: message}} ->
+        Logger.error("Unknown unsubscribe status returned: #{inspect(other)}")
+        {:error, message || "Unsubscribe failed"}
+
+      {:error, error_message} ->
+        {:error, error_message}
+    end
+  end
+
+  def unsubscribe_emails(%Scope{} = scope, ids) do
+    results =
+      Enum.map(ids, fn id ->
+        unsubscribe_email(scope, id)
+      end)
+
+    {successes, failures} =
+      Enum.reduce(results, {0, 0}, fn
+        {:ok, _}, {s, f} -> {s + 1, f}
+        {:error, _}, {s, f} -> {s, f + 1}
+      end)
+
+    {:ok, %{successes: successes, failures: failures}}
+  end
+
+  defp persist_unsubscribe_attempt(scope, email, result) do
+    alias Triage.Unsubscribes
+
+    attrs = %{
+      unsubscribe_url: result.unsubscribe_url,
+      flow_type: "ai_playwright",
+      status: result.status,
+      confirmed_message: result.message,
+      from_email: email.from
+    }
+
+    case Unsubscribes.create_unsubscribe_attempt(scope, attrs) do
+      {:ok, unsubscribe} ->
+        Logger.info("Created unsubscribe record: #{inspect(unsubscribe.id)}")
+
+      {:error, changeset} ->
+        Logger.error("Failed to create unsubscribe record: #{inspect(changeset.errors)}")
     end
   end
 end

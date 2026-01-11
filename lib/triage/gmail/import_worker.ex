@@ -11,18 +11,26 @@ defmodule Triage.Gmail.ImportWorker do
   alias Triage.Repo
 
   @impl true
-  def perform(%Oban.Job{args: %{"email_account_id" => email_account_id}}) do
-    email_account = Repo.get(EmailAccount, email_account_id)
+  def perform(%Oban.Job{args: %{"email_account_id" => email_account_id}} = job) do
+    Logger.metadata(import_worker_job_id: job.id)
 
-    cond do
-      is_nil(email_account) ->
-        {:error, :email_account_not_found}
+    try do
+      email_account = Repo.get(EmailAccount, email_account_id)
 
-      email_account.paused ->
-        {:discard, :email_account_paused}
+      cond do
+        is_nil(email_account) ->
+          Logger.warning("Import job #{job.id} could not find account #{email_account_id}")
+          {:error, :email_account_not_found}
 
-      true ->
-        do_import(email_account)
+        true ->
+          Logger.info(
+            "Starting Gmail import job #{job.id} for account #{email_account.id} (paused=#{email_account.paused})"
+          )
+
+          do_import(email_account)
+      end
+    after
+      Logger.metadata(import_worker_job_id: nil)
     end
   end
 

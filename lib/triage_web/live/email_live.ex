@@ -12,6 +12,7 @@ defmodule TriageWeb.EmailLive do
      socket
      |> assign(:selected_email, nil)
      |> assign(:selected_ids, MapSet.new())
+     |> assign(:loading_unsubscribe, false)
      |> stream(:emails, [])}
   end
 
@@ -34,7 +35,8 @@ defmodule TriageWeb.EmailLive do
     case Gmail.delete_email(current_scope, id) do
       {:ok, _email} ->
         socket =
-          if socket.assigns.selected_email && socket.assigns.selected_email.id == id do
+          if socket.assigns.selected_email &&
+               to_string(socket.assigns.selected_email.id) == id do
             assign(socket, :selected_email, nil)
           else
             socket
@@ -145,11 +147,73 @@ defmodule TriageWeb.EmailLive do
   end
 
   def handle_event("bulk_unsubscribe", _, socket) do
-    {:noreply, put_flash(socket, :error, "Bulk unsubscribe is not yet implemented.")}
+    current_scope = socket.assigns[:current_scope]
+    ids = MapSet.to_list(socket.assigns.selected_ids)
+
+    if Enum.empty?(ids) do
+      {:noreply, socket}
+    else
+      socket = assign(socket, :loading_unsubscribe, true)
+
+      case Gmail.unsubscribe_emails(current_scope, ids) do
+        {:ok, %{successes: successes, failures: failures}} ->
+          socket =
+            socket
+            |> assign(:selected_ids, MapSet.new())
+            |> put_flash(
+              :info,
+              "Unsubscribed from #{successes} emails. #{if failures > 0, do: "Failed to unsubscribe from #{failures} emails.", else: ""}"
+            )
+            |> assign(:loading_unsubscribe, false)
+
+          {:noreply, socket}
+      end
+    end
   end
 
-  def handle_event("unsubscribe", %{"id" => _id}, socket) do
-    {:noreply, put_flash(socket, :error, "Unsubscribe is not yet implemented.")}
+  def handle_event("unsubscribe", %{"id" => id}, socket) do
+    # Set loading state and return immediately so UI updates
+    socket = assign(socket, :loading_unsubscribe, true)
+
+    # Perform unsubscribe asynchronously
+    send(self(), {:perform_unsubscribe, id})
+
+    {:noreply, socket}
+  end
+
+  def handle_info({:perform_unsubscribe, id}, socket) do
+    current_scope = socket.assigns[:current_scope]
+
+    case Gmail.unsubscribe_email(current_scope, id) do
+      {:ok, _message} ->
+        email = Gmail.get_email!(current_scope, id)
+
+        # Delete the email after successful unsubscribe
+        case Gmail.delete_email(current_scope, id) do
+          {:ok, _email} ->
+            socket =
+              socket
+              |> assign(:loading_unsubscribe, false)
+              |> assign(:selected_email, nil)
+              |> put_flash(:info, "Successfully unsubscribed and deleted email")
+              |> stream_delete(:emails, email)
+
+            {:noreply, socket}
+
+          {:error, _error} ->
+            {:noreply,
+             socket
+             |> assign(:loading_unsubscribe, false)
+             |> assign(:selected_email, nil)
+             |> put_flash(:info, "Successfully unsubscribed (failed to delete email)")}
+        end
+
+      {:error, error} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Failed to unsubscribe: #{error}")
+         |> assign(:loading_unsubscribe, false)}
+    end
   end
 
   defp fetch_emails(socket) do

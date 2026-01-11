@@ -45,7 +45,8 @@ config :phoenix,
 
 config :triage,
   gmail_client: Triage.Gmail.ClientMock,
-  ai_service: Triage.Gmail.AIMock
+  ai_service: Triage.Gmail.AIMock,
+  playwright_mcp_url: nil
 
 # Disable Oban job processing during tests
 config :triage, Oban, testing: :manual

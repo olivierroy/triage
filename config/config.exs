@@ -100,7 +100,7 @@ config :triage, Oban,
     Oban.Plugins.Reindexer
   ],
   crontab: [
-    {"* * * * *", Triage.Gmail.SyncWorker, args: %{}}
+    {"*/10 * * * *", Triage.Gmail.SyncWorker, args: %{}}
   ]
 
 # Import environment specific config. This must remain at the bottom

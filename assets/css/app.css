@@ -45,4 +45,11 @@
 /* Make LiveView wrapper divs transparent for layout */
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
-/* This file is for your main application CSS */
+/* Status badge styles */
+.status-badge[data-status="success"] {
+  @apply bg-emerald-100 text-emerald-700 border-emerald-200;
+}
+
+.status-badge[data-status="failed"] {
+  @apply bg-rose-100 text-rose-700 border-rose-200;
+}

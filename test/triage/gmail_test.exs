@@ -1,8 +1,9 @@
 defmodule Triage.GmailTest do
   use Triage.DataCase
 
-  alias Triage.Gmail
   alias Triage.Accounts.Scope
+  alias Triage.Gmail
+  alias Triage.Unsubscribes
 
   import Triage.AccountsFixtures
   import Triage.GmailFixtures
@@ -119,6 +120,134 @@ defmodule Triage.GmailTest do
       imported = Gmail.list_emails(scope)
       assert length(imported) == 1
       assert hd(imported).summary == "Mocked summary"
+    end
+
+    test "import_emails/2 skips already imported messages without using AI", %{
+      scope: scope,
+      account: account
+    } do
+      existing = email_fixture(scope, account, %{gmail_message_id: "msg-existing"})
+
+      expect(Triage.Gmail.ClientMock, :list_messages, fn _token, _opts ->
+        {:ok, [%{"id" => existing.gmail_message_id}], nil}
+      end)
+
+      expect(Triage.Gmail.ClientMock, :get_message, 0, fn _token, _message_id, _opts ->
+        flunk("get_message should not be called for already imported emails")
+      end)
+
+      expect(Triage.Gmail.AIMock, :categorize_and_summarize, 0, fn _attrs, _categories ->
+        flunk("AI should not categorize already imported emails")
+      end)
+
+      assert {:ok, 0} = Gmail.import_emails(account)
+
+      # Ensure the existing email is still present and unchanged
+      assert [fetched] = Gmail.list_emails(scope)
+      assert fetched.id == existing.id
+    end
+
+    test "import_emails/2 processes only unseen messages when mix contains duplicates", %{
+      scope: scope,
+      account: account
+    } do
+      existing = email_fixture(scope, account, %{gmail_message_id: "msg-existing"})
+
+      expect(Triage.Gmail.ClientMock, :list_messages, fn _token, _opts ->
+        {:ok, [%{"id" => existing.gmail_message_id}, %{"id" => "msg-new"}], nil}
+      end)
+
+      expect(Triage.Gmail.ClientMock, :get_message, fn _token, "msg-new", _opts ->
+        {:ok,
+         %{
+           "id" => "msg-new",
+           "threadId" => "t456",
+           "internalDate" => "#{System.system_time(:millisecond)}",
+           "payload" => %{
+             "headers" => [
+               %{"name" => "Subject", "value" => "Fresh"},
+               %{"name" => "From", "value" => "sender@test.com"},
+               %{"name" => "Date", "value" => DateTime.to_iso8601(DateTime.utc_now())}
+             ]
+           },
+           "snippet" => "Brand new"
+         }}
+      end)
+
+      expect(Triage.Gmail.AIMock, :categorize_and_summarize, fn attrs, _categories ->
+        assert attrs.subject == "Fresh"
+        {:ok, %{category_id: nil, summary: "Fresh summary"}}
+      end)
+
+      stub(Triage.Gmail.ClientMock, :modify_message, fn _token, _id, _payload, _opts ->
+        {:ok, %{}}
+      end)
+
+      assert {:ok, 1} = Gmail.import_emails(account)
+
+      summaries = Gmail.list_emails(scope) |> Enum.map(& &1.summary)
+      assert "Fresh summary" in summaries
+      assert Enum.count(summaries) == 2
+    end
+
+    test "unsubscribe_email/2 persists unsubscribe attempts", %{scope: scope, account: account} do
+      email = email_fixture(scope, account)
+
+      expect(Triage.Gmail.AIMock, :unsubscribe_from_email, fn attrs ->
+        assert attrs.subject == email.subject
+
+        {:ok,
+         %{
+           unsubscribe_url: "https://example.com/unsubscribe",
+           status: :failed,
+           message: "manual"
+         }}
+      end)
+
+      assert {:error, "manual"} = Gmail.unsubscribe_email(scope, email.id)
+
+      [attempt] = Unsubscribes.list_unsubscribes(scope)
+      assert attempt.status == :failed
+      assert attempt.unsubscribe_url == "https://example.com/unsubscribe"
+      assert attempt.from_email == email.from
+    end
+
+    test "unsubscribe_email/2 returns error when no link is found", %{
+      scope: scope,
+      account: account
+    } do
+      email = email_fixture(scope, account)
+
+      expect(Triage.Gmail.AIMock, :unsubscribe_from_email, fn _attrs ->
+        {:ok, %{status: :not_found, message: "No link"}}
+      end)
+
+      assert {:error, "No link"} = Gmail.unsubscribe_email(scope, email.id)
+      assert [] == Unsubscribes.list_unsubscribes(scope)
+    end
+
+    test "unsubscribe_emails/2 returns aggregated results", %{scope: scope, account: account} do
+      email_one = email_fixture(scope, account)
+      email_two = email_fixture(scope, account)
+
+      expect(Triage.Gmail.AIMock, :unsubscribe_from_email, fn _attrs ->
+        {:ok,
+         %{
+           unsubscribe_url: "https://example.com/success",
+           status: :success,
+           message: "done"
+         }}
+      end)
+
+      expect(Triage.Gmail.AIMock, :unsubscribe_from_email, fn _attrs ->
+        {:error, "not found"}
+      end)
+
+      assert {:ok, %{successes: 1, failures: 1}} =
+               Gmail.unsubscribe_emails(scope, [email_one.id, email_two.id])
+
+      [attempt] = Unsubscribes.list_unsubscribes(scope)
+      assert attempt.status == :success
     end
   end
 end

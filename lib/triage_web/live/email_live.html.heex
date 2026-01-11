@@ -34,9 +34,40 @@
         <button
           type="button"
           phx-click="bulk_unsubscribe"
-          class="inline-flex items-center gap-1.5 text-sm font-semibold text-sky-600 hover:text-sky-800"
+          disabled={@loading_unsubscribe}
+          class={[
+            "inline-flex items-center gap-1.5 text-sm font-semibold",
+            @loading_unsubscribe && "opacity-50 cursor-not-allowed",
+            !@loading_unsubscribe && "text-sky-600 hover:text-sky-800"
+          ]}
         >
-          <.icon name="hero-no-symbol" class="h-4 w-4" /> Unsubscribe
+          <%= if @loading_unsubscribe do %>
+            <svg
+              class="animate-spin h-4 w-4"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"
+              >
+              </circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              >
+              </path>
+            </svg>
+            Unsubscribing...
+          <% else %>
+            <.icon name="hero-no-symbol" class="h-4 w-4" /> Unsubscribe
+          <% end %>
         </button>
       </div>
       <div :if={MapSet.size(@selected_ids) == 0} class="text-sm text-slate-500">
@@ -203,10 +234,43 @@
             type="button"
             phx-click="unsubscribe"
             phx-value-id={@selected_email.id}
-            class="group inline-flex items-center justify-center rounded-xl border border-sky-100 bg-sky-50 p-2.5 text-sky-600 transition hover:bg-sky-100 hover:text-sky-700"
-            title="Unsubscribe"
+            disabled={@loading_unsubscribe}
+            class={[
+              "group inline-flex items-center gap-2 justify-center rounded-xl border transition-all duration-200",
+              @loading_unsubscribe &&
+                "border-sky-200 bg-sky-100 px-4 py-2.5 cursor-wait",
+              !@loading_unsubscribe &&
+                "border-sky-100 bg-sky-50 p-2.5 text-sky-600 hover:bg-sky-100 hover:text-sky-700"
+            ]}
+            title={if @loading_unsubscribe, do: "Unsubscribing...", else: "Unsubscribe"}
           >
-            <.icon name="hero-no-symbol" class="size-5" />
+            <%= if @loading_unsubscribe do %>
+              <svg
+                class="animate-spin size-5 text-sky-600"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                >
+                </circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                >
+                </path>
+              </svg>
+              <span class="text-sm font-semibold text-sky-600">Unsubscribing...</span>
+            <% else %>
+              <.icon name="hero-no-symbol" class="size-5" />
+            <% end %>
           </button>
           <button
             type="button"

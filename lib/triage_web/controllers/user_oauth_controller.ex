@@ -106,6 +106,11 @@ defmodule TriageWeb.UserOAuthController do
         |> put_flash(:info, "Successfully connected your Gmail account")
         |> redirect(to: ~p"/")
 
+      {:error, :missing_refresh_token} ->
+        conn
+        |> put_flash(:error, missing_refresh_token_flash_message())
+        |> redirect(to: ~p"/")
+
       {:error, error} ->
         Logger.error("Failed to connect Gmail account: #{inspect(error)}")
 
@@ -127,17 +132,33 @@ defmodule TriageWeb.UserOAuthController do
                full_name: name
              }) do
           {:ok, user} ->
-            create_email_account(user, email, token)
+            case create_email_account(user, email, token) do
+              {:ok, _email_account} ->
+                Accounts.deliver_user_update_email_instructions(
+                  user,
+                  user.email,
+                  &url(~p"/users/settings/confirm-email/#{&1}")
+                )
 
-            Accounts.deliver_user_update_email_instructions(
-              user,
-              user.email,
-              &url(~p"/users/settings/confirm-email/#{&1}")
-            )
+                conn
+                |> put_flash(:info, "Account created successfully.")
+                |> UserAuth.log_in_user(user)
 
-            conn
-            |> put_flash(:info, "Account created successfully.")
-            |> UserAuth.log_in_user(user)
+              {:error, :missing_refresh_token} ->
+                Accounts.delete_user(user)
+
+                conn
+                |> put_flash(:error, missing_refresh_token_flash_message())
+                |> redirect(to: ~p"/users/log-in")
+
+              {:error, error} ->
+                Logger.error("Failed to create Gmail account for Google login: #{inspect(error)}")
+                Accounts.delete_user(user)
+
+                conn
+                |> put_flash(:error, "Failed to create account with Google")
+                |> redirect(to: ~p"/users/log-in")
+            end
 
           {:error, _changeset} ->
             conn
@@ -159,25 +180,52 @@ defmodule TriageWeb.UserOAuthController do
 
   defp create_email_account(user, email, token) do
     access_token = token["access_token"]
-    refresh_token = token["refresh_token"]
-    expires_in = token["expires_in"]
+    refresh_token = token["refresh_token"] || existing_refresh_token(user, email)
+    expires_in = Map.get(token, "expires_in", 0)
     token_type = token["token_type"]
-    scopes = token["scope"] |> String.split(" ")
+    scopes = parse_scopes(token["scope"])
 
-    expires_at =
-      DateTime.add(DateTime.utc_now(), expires_in, :second)
+    cond do
+      is_nil(access_token) ->
+        {:error, :missing_access_token}
 
-    email_account_attrs = %{
-      user_id: user.id,
-      provider: "gmail",
-      email: email,
-      access_token: Encryption.encrypt(access_token),
-      refresh_token: Encryption.encrypt(refresh_token),
-      expires_at: expires_at,
-      token_type: token_type,
-      scopes: scopes
-    }
+      is_nil(refresh_token) ->
+        {:error, :missing_refresh_token}
 
-    Gmail.create_email_account(email_account_attrs)
+      true ->
+        expires_at =
+          DateTime.add(DateTime.utc_now(), expires_in, :second)
+
+        email_account_attrs = %{
+          user_id: user.id,
+          provider: "gmail",
+          email: email,
+          access_token: Encryption.encrypt(access_token),
+          refresh_token: Encryption.encrypt(refresh_token),
+          expires_at: expires_at,
+          token_type: token_type,
+          scopes: scopes
+        }
+
+        Gmail.create_email_account(email_account_attrs)
+    end
+  end
+
+  defp existing_refresh_token(user, email) do
+    user.id
+    |> Gmail.get_email_account_by_user_and_email("gmail", email)
+    |> case do
+      nil -> nil
+      email_account -> Encryption.decrypt(email_account.refresh_token)
+    end
+  end
+
+  defp parse_scopes(nil), do: []
+  defp parse_scopes(<<>>), do: []
+  defp parse_scopes(scopes) when is_binary(scopes), do: String.split(scopes, " ")
+  defp parse_scopes(_), do: []
+
+  defp missing_refresh_token_flash_message do
+    "Google did not return the permissions we need to read your Gmail. Please remove Triage from https://myaccount.google.com/permissions and connect again."
   end
 end

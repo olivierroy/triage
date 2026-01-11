@@ -76,6 +76,7 @@ defmodule TriageWeb.Router do
     resources "/email_rules", EmailRuleController, except: [:show]
     resources "/email_accounts", EmailAccountController, only: [:index, :edit, :update]
     live "/emails", EmailLive
+    live "/unsubscribes", UnsubscribeLive
 
     post "/users/gmail/disconnect/:id", GmailController, :disconnect
     post "/users/gmail/import/:id", GmailController, :import

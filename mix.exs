@@ -69,11 +69,12 @@ defmodule Triage.MixProject do
       {:bandit, "~> 1.5"},
       {:new_relic_agent, "~> 1.0"},
       {:langchain, "0.4.1"},
+      {:langchain_mcp, "~> 0.2.0"},
       {:assent, "~> 0.2"},
       {:pbkdf2_elixir, "~> 2.0"},
       {:cloak, "~> 1.1"},
       {:oban, "~> 2.17"},
-      {:oban_web, "~> 2.10", only: [:dev, :test]},
+      {:oban_web, "~> 2.10"},
       {:mox, "~> 1.1", only: :test},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
