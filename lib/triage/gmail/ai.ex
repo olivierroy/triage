@@ -279,11 +279,12 @@ defmodule Triage.Gmail.AI do
     1. Navigate to that link using browser tools and complete the captcha if you need to
     2. Complete the unsubscribe process (click unsubscribe/opt-out buttons, confirm prompts)
     3. If prompted for an email address, use: #{receiver_email}
-    4. Return the JSON response described in the system prompt with the exact confirmation copy from the page
-    5. If anything fails, set success to false and message to the exact error text shown
+    4. Make sure to fully submit the unsubscribe request and reach a confirmation page
+    5. Return the JSON response described in the system prompt with the exact confirmation copy from the page
+    6. If anything fails, set success to false and message to the exact error text shown
     """
 
-    selected_model = Enum.random(@models)
+    selected_model = "gemini-2.5-pro"
     Logger.info("Using AI model: #{selected_model} for unsubscribe (with Playwright MCP)")
 
     model =
