@@ -98,6 +98,7 @@ defmodule TriageWeb.EmailLive do
   end
 
   def handle_event("toggle_all", _params, socket) do
+    current_scope = socket.assigns[:current_scope]
     current_page_ids = socket.assigns.current_page_ids
     selected_ids = socket.assigns.selected_ids
 
@@ -114,7 +115,27 @@ defmodule TriageWeb.EmailLive do
         Enum.reduce(current_page_ids, selected_ids, fn id, acc -> MapSet.put(acc, id) end)
       end
 
-    {:noreply, assign(socket, :selected_ids, new_selected_ids)}
+    category_id = socket.assigns.category_id
+    page = socket.assigns.page
+    offset = (page - 1) * @page_size
+
+    _category =
+      if category_id not in [nil, "", "none"],
+        do: Categories.get_category!(current_scope, category_id)
+
+    opts =
+      case category_id do
+        "none" -> [category_id: nil]
+        id when is_binary(id) and id != "" -> [category_id: id]
+        _ -> []
+      end
+
+    emails = Gmail.list_emails(current_scope, opts ++ [limit: @page_size, offset: offset])
+
+    {:noreply,
+     socket
+     |> assign(:selected_ids, new_selected_ids)
+     |> stream(:emails, emails, reset: true)}
   end
 
   def handle_event("bulk_delete", _, socket) do

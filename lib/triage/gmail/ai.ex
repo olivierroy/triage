@@ -7,6 +7,7 @@ defmodule Triage.Gmail.AI do
 
   alias LangChain.Chains.LLMChain
   alias LangChain.ChatModels.ChatGoogleAI
+  alias LangChain.ChatModels.ChatOpenAI
   alias LangChain.Message
   alias LangChain.Message.ContentPart
   alias LangChain.Message.ToolResult
@@ -284,14 +285,14 @@ defmodule Triage.Gmail.AI do
     6. If anything fails, set success to false and message to the exact error text shown
     """
 
-    selected_model = "gemini-2.5-pro"
+    selected_model = "google/gemini-3-flash-preview"
     Logger.info("Using AI model: #{selected_model} for unsubscribe (with Playwright MCP)")
 
     model =
-      ChatGoogleAI.new!(%{
+      ChatOpenAI.new!(%{
         model: selected_model,
-        api_key: System.get_env("GOOGLE_API_KEY"),
-        temperature: 0
+        endpoint: "https://openrouter.ai/api/v1/chat/completions",
+        api_key: System.get_env("OPENROUTER_API_KEY")
       })
 
     all_tools = mcp_functions
@@ -433,7 +434,33 @@ defmodule Triage.Gmail.AI do
   defp resolve_processed_content(%Message{} = message) do
     case ContentPart.content_to_string(message.content) do
       nil -> {:error, :empty_content}
-      json -> Jason.decode(json)
+      raw_json -> raw_json |> clean_json_response() |> Jason.decode()
+    end
+  end
+
+  defp clean_json_response(json_string) do
+    json_string
+    |> remove_markdown_code_blocks()
+    |> extract_properties_if_wrapped()
+    |> String.trim()
+  end
+
+  defp remove_markdown_code_blocks(text) do
+    text
+    |> String.replace(~r/```json\s*/i, "")
+    |> String.replace(~r/```\s*$/, "")
+  end
+
+  defp extract_properties_if_wrapped(text) do
+    case Jason.decode(text) do
+      {:ok, %{"properties" => properties} = _data} when is_map(properties) ->
+        Jason.encode!(properties)
+
+      {:ok, decoded} ->
+        Jason.encode!(decoded)
+
+      {:error, _} ->
+        text
     end
   end
 
