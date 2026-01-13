@@ -296,22 +296,26 @@ defmodule Triage.Gmail do
   defp import_single_message(access_token, email_account, %{"id" => message_id}, categories) do
     with {:ok, gmail_message} <- gmail_client().get_message(access_token, message_id, []),
          {:ok, email_attrs} <- parse_gmail_message(gmail_message, email_account) do
-      scope = %Triage.Accounts.Scope{user: %Triage.Accounts.User{id: email_account.user_id}}
+      if "INBOX" not in email_attrs.labels do
+        {:skip, :not_inbox}
+      else
+        scope = %Triage.Accounts.Scope{user: %Triage.Accounts.User{id: email_account.user_id}}
 
-      case Triage.EmailRules.evaluate_email(scope, email_attrs) do
-        %{action: "skip"} ->
-          {:skip, :rule_matched}
+        case Triage.EmailRules.evaluate_email(scope, email_attrs) do
+          %{action: "skip"} ->
+            {:skip, :rule_matched}
 
-        %{action: "process", archive: should_archive} ->
-          process_and_archive(email_attrs, categories, email_account, should_archive)
+          %{action: "process", archive: should_archive} ->
+            process_and_archive(email_attrs, categories, email_account, should_archive)
 
-        nil ->
-          process_and_archive(
-            email_attrs,
-            categories,
-            email_account,
-            email_account.archive_emails
-          )
+          nil ->
+            process_and_archive(
+              email_attrs,
+              categories,
+              email_account,
+              email_account.archive_emails
+            )
+        end
       end
     else
       error -> error
@@ -353,7 +357,7 @@ defmodule Triage.Gmail do
   end
 
   defp parse_gmail_message(
-         %{
+         gmail_message = %{
            "id" => message_id,
            "threadId" => thread_id,
            "payload" => payload,
@@ -372,7 +376,8 @@ defmodule Triage.Gmail do
     internal_date_ts = String.to_integer(internal_date)
     internal_datetime = DateTime.from_unix!(internal_date_ts, :millisecond)
 
-    labels = get_in(payload, ["labelIds"]) || []
+    label_ids = Map.get(gmail_message, "labelIds", [])
+    snippet = Map.get(gmail_message, "snippet", "")
 
     email_attrs = %{
       user_id: email_account.user_id,
@@ -385,8 +390,8 @@ defmodule Triage.Gmail do
       date: date,
       body_html: body[:html],
       body_text: body[:text],
-      labels: labels,
-      snippet: get_in(payload, ["snippet"]),
+      labels: label_ids,
+      snippet: snippet,
       internal_date: internal_datetime
     }
 

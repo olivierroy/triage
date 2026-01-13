@@ -65,6 +65,25 @@ defmodule Triage.GmailTest do
       assert hd(emails).id == email_out_cat.id
     end
 
+    test "list_emails/2 sorts inbox emails by newest date first", %{
+      scope: scope,
+      account: account
+    } do
+      now = DateTime.utc_now()
+
+      newest = email_fixture(scope, account, %{date: DateTime.add(now, 3600, :second)})
+
+      mid =
+        email_fixture(scope, account, %{
+          date: nil,
+          internal_date: DateTime.add(now, 1800, :second)
+        })
+
+      oldest = email_fixture(scope, account, %{date: DateTime.add(now, -7200, :second)})
+
+      assert Enum.map(Gmail.list_emails(scope), & &1.id) == [newest.id, mid.id, oldest.id]
+    end
+
     test "count_emails/2 returns the total count of emails", %{scope: scope, account: account} do
       email_fixture(scope, account)
       email_fixture(scope, account)
@@ -94,6 +113,7 @@ defmodule Triage.GmailTest do
            "id" => "msg123",
            "threadId" => "t123",
            "internalDate" => "#{System.system_time(:millisecond)}",
+           "labelIds" => ["INBOX"],
            "payload" => %{
              "headers" => [
                %{"name" => "Subject", "value" => "Test AI"},
@@ -163,6 +183,7 @@ defmodule Triage.GmailTest do
            "id" => "msg-new",
            "threadId" => "t456",
            "internalDate" => "#{System.system_time(:millisecond)}",
+           "labelIds" => ["INBOX"],
            "payload" => %{
              "headers" => [
                %{"name" => "Subject", "value" => "Fresh"},
@@ -188,6 +209,37 @@ defmodule Triage.GmailTest do
       summaries = Gmail.list_emails(scope) |> Enum.map(& &1.summary)
       assert "Fresh summary" in summaries
       assert Enum.count(summaries) == 2
+    end
+
+    test "import_emails/2 skips messages not in INBOX", %{scope: scope, account: account} do
+      expect(Triage.Gmail.ClientMock, :list_messages, fn _token, _opts ->
+        {:ok, [%{"id" => "sent-msg"}], nil}
+      end)
+
+      expect(Triage.Gmail.ClientMock, :get_message, fn _token, "sent-msg", _opts ->
+        {:ok,
+         %{
+           "id" => "sent-msg",
+           "threadId" => "thread-1",
+           "internalDate" => "#{System.system_time(:millisecond)}",
+           "labelIds" => ["CATEGORY_PERSONAL"],
+           "payload" => %{
+             "headers" => [
+               %{"name" => "Subject", "value" => "Sent mail"},
+               %{"name" => "From", "value" => "user@example.com"},
+               %{"name" => "Date", "value" => DateTime.to_iso8601(DateTime.utc_now())}
+             ]
+           },
+           "snippet" => "Sent snippet"
+         }}
+      end)
+
+      expect(Triage.Gmail.AIMock, :categorize_and_summarize, 0, fn _attrs, _categories ->
+        flunk("AI service should not be invoked for non-INBOX messages")
+      end)
+
+      assert {:ok, 0} = Gmail.import_emails(account)
+      assert [] == Gmail.list_emails(scope)
     end
 
     test "unsubscribe_email/2 persists unsubscribe attempts", %{scope: scope, account: account} do
